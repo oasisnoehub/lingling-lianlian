@@ -546,30 +546,52 @@ button {
 .timeline {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 0;
 }
 
 .timeline-item {
   display: flex;
   gap: 12px;
+  position: relative;
+  padding-left: 48px;
+}
+
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: 17px;
+  top: 44px;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--border-glass) 0%, transparent 100%);
+}
+
+.timeline-item:last-child::before {
+  display: none;
 }
 
 .timeline-avatar {
-  width: 40px;
-  height: 40px;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: #fff;
   flex-shrink: 0;
+  z-index: 1;
+  border: 3px solid var(--bg-dark);
 }
 
 .timeline-content {
   flex: 1;
   min-width: 0;
+  padding-bottom: 20px;
 }
 
 .timeline-header {
