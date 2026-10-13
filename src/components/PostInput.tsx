@@ -114,7 +114,7 @@ function PostInput({
       <div className="input-wrapper">
         <textarea
           className="input-field"
-          placeholder="此刻在想什么……"
+          placeholder="无论此刻在想什么......都要开心一点啦！"
           value={content}
           onChange={e => handleContentChange(e.target.value)}
           onKeyDown={handleKeyDown}
