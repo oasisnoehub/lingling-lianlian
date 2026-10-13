@@ -41,6 +41,17 @@ app.get('/api/timeline', (_req, res) => {
   }
 })
 
+// Serve frontend in production
+if (process.env.NODE_ENV === 'production') {
+  const distDir = join(rootDir, 'dist')
+  if (existsSync(distDir)) {
+    app.use(express.static(distDir))
+    app.get('*', (_req, res) => {
+      res.sendFile(join(distDir, 'index.html'))
+    })
+  }
+}
+
 // Start server
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`)

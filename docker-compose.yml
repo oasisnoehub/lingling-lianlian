@@ -1,0 +1,31 @@
+services:
+  lingling-lianlian:
+    build: .
+    networks:
+      - frappe_network
+      - traefik_public
+    volumes:
+      - lingling-data:/app/data
+    environment:
+      - NODE_ENV=production
+      - PORT=3456
+      - DATA_DIR=/app/data
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik_public"
+      - "traefik.http.routers.lingling.rule=Host(`linglian.oasisnoe.com.cn`)"
+      - "traefik.http.routers.lingling.entrypoints=http,https"
+      - "traefik.http.routers.lingling.tls=true"
+      - "traefik.http.services.lingling.loadbalancer.server.port=3456"
+      - "traefik.http.middlewares.lingling-redirect-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.lingling-redirect-https.redirectscheme.permanent=true"
+
+networks:
+  frappe_network:
+    external: true
+  traefik_public:
+    external: true
+
+volumes:
+  lingling-data:
