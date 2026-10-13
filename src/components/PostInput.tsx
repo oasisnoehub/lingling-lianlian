@@ -206,7 +206,10 @@ function PostInput({
           disabled={uploading || (!content.trim() && media.length === 0)}
           style={{ flex: 1 }}
         >
-          <span>✈️</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M22 2L11 13"/>
+            <path d="M22 2L15 22L11 13L2 9L22 2Z"/>
+          </svg>
           <span>{isEditing ? '保存修改' : '发布此刻'}</span>
         </button>
       </div>
