@@ -2,15 +2,30 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Person, PostWithAuthor, MediaItem } from '../types'
 import { getPersons, getTimeline, createPost, uploadImage, uploadVideo } from '../api/client'
-import PostCard from '../components/PostCard'
 import PostInput from '../components/PostInput'
 import Timeline from '../components/Timeline'
+
+interface Emotion {
+  emoji: string
+  label: string
+  id: string
+}
+
+const emotions: Emotion[] = [
+  { emoji: '😊', label: '开心', id: 'happy' },
+  { emoji: '🌿', label: '平静', id: 'calm' },
+  { emoji: '💻', label: '忙碌', id: 'busy' },
+  { emoji: '💖', label: '想你', id: 'love' },
+  { emoji: '🌙', label: '疲惫', id: 'tired' },
+  { emoji: '🎉', label: '兴奋', id: 'excited' },
+]
 
 function TimelinePage() {
   const navigate = useNavigate()
   const { personId } = useParams<{ personId: string }>()
   const [persons, setPersons] = useState<Person[]>([])
   const [posts, setPosts] = useState<PostWithAuthor[]>([])
+  const [selectedEmotion, setSelectedEmotion] = useState<string>('')
   const [loading, setLoading] = useState(true)
 
   const currentPerson = persons.find(p => p.id === personId)
@@ -35,7 +50,7 @@ function TimelinePage() {
   }
 
   async function handleSubmit(content: string, media: MediaItem[]) {
-    if (!personId || !content.trim()) return
+    if (!personId || (!content.trim() && media.length === 0)) return
     try {
       const newPost = await createPost({
         author_id: personId,
@@ -50,6 +65,7 @@ function TimelinePage() {
           media: media,
         }, ...prev])
       }
+      setSelectedEmotion('')
     } catch (err) {
       console.error('Failed to create post:', err)
     }
@@ -66,44 +82,54 @@ function TimelinePage() {
   if (loading) {
     return (
       <div className="app-container">
-        <header className="app-header">
-          <button className="back-btn" onClick={() => navigate('/')}>
-            ←
-          </button>
-          <h1 className="timeline-title">我们的话题</h1>
-        </header>
-        <main className="main-content">
-          <div className="loading-container">
-            <div className="loading-spinner" />
-          </div>
-        </main>
+        <div className="loading-container">
+          <div className="loading-spinner" />
+        </div>
       </div>
     )
   }
 
   return (
     <div className="app-container">
-      <header className="app-header">
+      <header className="timeline-page-header">
         <button className="back-btn" onClick={() => navigate('/')}>
           ←
         </button>
-        <h1 className="timeline-title">
-          {currentPerson ? `${currentPerson.name} 的时间线` : '我们的话题'}
+        <h1 className="timeline-page-title">
+          {currentPerson ? `${currentPerson.name} 的时间线` : '共享时间线'}
         </h1>
       </header>
 
-      <main className="main-content">
-        {currentPerson && (
+      {currentPerson && (
+        <div className="main-card">
+          <div className="card-header">
+            <div
+              className="card-avatar"
+              style={{
+                background: `linear-gradient(135deg, ${currentPerson.avatar_color} 0%, ${currentPerson.avatar_color}aa 100%)`
+              }}
+            >
+              {currentPerson.name.charAt(0)}
+            </div>
+            <div className="card-header-text">
+              <div className="card-header-title">记录这一刻</div>
+              <div className="card-header-subtitle">以 {currentPerson.name} 的身份</div>
+            </div>
+          </div>
+
           <PostInput
             currentPerson={currentPerson}
+            emotions={emotions}
+            selectedEmotion={selectedEmotion}
+            onSelectEmotion={setSelectedEmotion}
             onSubmit={handleSubmit}
             onImageUpload={handleImageUpload}
             onVideoUpload={handleVideoUpload}
           />
-        )}
+        </div>
+      )}
 
-        <Timeline posts={posts} />
-      </main>
+      <Timeline posts={posts} />
     </div>
   )
 }
