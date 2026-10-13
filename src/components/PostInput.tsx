@@ -1,8 +1,17 @@
 import { useState, useRef } from 'react'
 import { Person, MediaItem } from '../types'
 
+interface Emotion {
+  emoji: string
+  label: string
+  id: string
+}
+
 interface PostInputProps {
   currentPerson: Person
+  emotions: Emotion[]
+  selectedEmotion: string
+  onSelectEmotion: (id: string) => void
   onSubmit: (content: string, media: MediaItem[]) => void
   onImageUpload: (file: File) => Promise<MediaItem>
   onVideoUpload: (file: File) => Promise<MediaItem>
@@ -10,6 +19,9 @@ interface PostInputProps {
 
 function PostInput({
   currentPerson,
+  emotions,
+  selectedEmotion,
+  onSelectEmotion,
   onSubmit,
   onImageUpload,
   onVideoUpload,
@@ -58,63 +70,44 @@ function PostInput({
     setMedia([])
   }
 
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      handleSubmit()
+    }
+  }
+
   return (
-    <div className="post-input-section">
-      <div className="post-input-row">
-        <div
-          className="post-avatar"
-          style={{
-            background: currentPerson.avatar_color,
-            width: 40,
-            height: 40,
-            fontSize: 16,
-          }}
-        >
-          {currentPerson.name.charAt(0)}
-        </div>
-        <div className="floating-group" style={{ flex: 1 }}>
-          <textarea
-            placeholder=" "
-            value={content}
-            onChange={e => setContent(e.target.value)}
-            rows={2}
-          />
-          <label>说点什么...</label>
-        </div>
-        <button
-          className="btn-primary"
-          onClick={handleSubmit}
-          disabled={uploading || (!content.trim() && media.length === 0)}
-        >
-          发送
-        </button>
+    <div>
+      {/* Input */}
+      <div className="input-wrapper">
+        <textarea
+          className="input-field"
+          placeholder="此刻在想什么……"
+          value={content}
+          onChange={e => setContent(e.target.value)}
+          onKeyDown={handleKeyDown}
+          rows={3}
+        />
       </div>
 
-      <div className="media-upload-btns">
-        <label className="upload-btn">
-          <span>🖼️</span>
-          <span>图片</span>
-          <input
-            ref={imageInputRef}
-            type="file"
-            accept="image/*"
-            style={{ display: 'none' }}
-            onChange={handleImageSelect}
-          />
-        </label>
-        <label className="upload-btn">
-          <span>🎬</span>
-          <span>视频</span>
-          <input
-            ref={videoInputRef}
-            type="file"
-            accept="video/*"
-            style={{ display: 'none' }}
-            onChange={handleVideoSelect}
-          />
-        </label>
+      {/* Emotion Selector */}
+      <div className="emotion-section">
+        <span className="emotion-label">此刻心情</span>
+        <div className="emotion-list">
+          {emotions.map(emotion => (
+            <button
+              key={emotion.id}
+              className={`emotion-pill ${selectedEmotion === emotion.id ? 'active' : ''}`}
+              onClick={() => onSelectEmotion(selectedEmotion === emotion.id ? '' : emotion.id)}
+            >
+              <span className="emoji">{emotion.emoji}</span>
+              <span>{emotion.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
+      {/* Media Preview */}
       {media.length > 0 && (
         <div className="media-preview-list">
           {media.map(item => (
@@ -134,6 +127,35 @@ function PostInput({
           ))}
         </div>
       )}
+
+      {/* Attachments */}
+      <div className="attachment-row">
+        <label className="attachment-btn">
+          <span>⊕</span>
+          <span>照片</span>
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={handleImageSelect}
+          />
+        </label>
+        <label className="attachment-btn">
+          <span>⌂</span>
+          <span>添加位置</span>
+        </label>
+      </div>
+
+      {/* Submit Button */}
+      <button
+        className="submit-btn"
+        onClick={handleSubmit}
+        disabled={uploading || (!content.trim() && media.length === 0)}
+      >
+        <span>✈️</span>
+        <span>发布此刻</span>
+      </button>
     </div>
   )
 }
