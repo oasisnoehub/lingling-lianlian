@@ -32,8 +32,8 @@ router.post('/', (req, res) => {
 
 router.put('/:id', (req, res) => {
   try {
-    const { content, media } = req.body
-    const post = updatePost(req.params.id, content, media)
+    const { content, emotion, media } = req.body
+    const post = updatePost(req.params.id, content, emotion, media)
 
     if (!post) {
       return res.status(404).json({ error: 'Post not found' })

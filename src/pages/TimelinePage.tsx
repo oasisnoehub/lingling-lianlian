@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Person, PostWithAuthor, MediaItem } from '../types'
-import { getPersons, getTimeline, createPost, uploadImage, uploadVideo } from '../api/client'
+import { getPersons, getTimeline, createPost, updatePost, uploadImage, uploadVideo } from '../api/client'
 import PostInput from '../components/PostInput'
 import Timeline from '../components/Timeline'
 
@@ -28,6 +28,12 @@ function TimelinePage() {
   const [selectedEmotion, setSelectedEmotion] = useState<string>('')
   const [loading, setLoading] = useState(true)
 
+  // Edit state
+  const [editingPost, setEditingPost] = useState<PostWithAuthor | null>(null)
+  const [editContent, setEditContent] = useState('')
+  const [editMedia, setEditMedia] = useState<MediaItem[]>([])
+  const [editEmotion, setEditEmotion] = useState<string>('')
+
   const currentPerson = persons.find(p => p.id === personId)
 
   useEffect(() => {
@@ -49,27 +55,48 @@ function TimelinePage() {
     }
   }
 
+  function handleEditPost(post: PostWithAuthor) {
+    setEditingPost(post)
+    setEditContent(post.content)
+    setEditMedia([...post.media])
+    setEditEmotion(post.emotion || '')
+    setSelectedEmotion(post.emotion || '')
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function handleCancelEdit() {
+    setEditingPost(null)
+    setEditContent('')
+    setEditMedia([])
+    setEditEmotion('')
+    setSelectedEmotion('')
+  }
+
   async function handleSubmit(content: string, media: MediaItem[], emotion?: string) {
     if (!personId || (!content.trim() && media.length === 0)) return
+
     try {
-      const newPost = await createPost({
-        author_id: personId,
-        content: content.trim(),
-        emotion,
-        media,
-      })
-      const author = persons.find(p => p.id === personId)
-      if (author) {
-        setPosts(prev => [{
-          ...newPost,
-          author,
-          media: media,
-          emotion: emotion,
-        }, ...prev])
+      if (editingPost) {
+        // Update existing post
+        await updatePost(editingPost.id, content.trim(), emotion, media)
+        setEditingPost(null)
+      } else {
+        // Create new post
+        await createPost({
+          author_id: personId,
+          content: content.trim(),
+          emotion,
+          media,
+        })
       }
+      setEditContent('')
+      setEditMedia([])
+      setEditEmotion('')
       setSelectedEmotion('')
+      loadData()
     } catch (err) {
-      console.error('Failed to create post:', err)
+      console.error('Failed to save post:', err)
     }
   }
 
@@ -79,6 +106,10 @@ function TimelinePage() {
 
   async function handleVideoUpload(file: File): Promise<MediaItem> {
     return uploadVideo(file)
+  }
+
+  async function handlePostsChange() {
+    loadData()
   }
 
   if (loading) {
@@ -114,8 +145,12 @@ function TimelinePage() {
               {currentPerson.name.charAt(0)}
             </div>
             <div className="card-header-text">
-              <div className="card-header-title">记录这一刻</div>
-              <div className="card-header-subtitle">以 {currentPerson.name} 的身份</div>
+              <div className="card-header-title">
+                {editingPost ? '编辑此刻' : '记录这一刻'}
+              </div>
+              <div className="card-header-subtitle">
+                {editingPost ? '修改内容后保存' : `以 ${currentPerson.name} 的身份`}
+              </div>
             </div>
           </div>
 
@@ -127,13 +162,21 @@ function TimelinePage() {
             onSubmit={handleSubmit}
             onImageUpload={handleImageUpload}
             onVideoUpload={handleVideoUpload}
+            initialContent={editContent}
+            initialMedia={editMedia}
+            initialEmotion={editEmotion}
+            onContentChange={setEditContent}
+            onMediaChange={setEditMedia}
+            isEditing={!!editingPost}
+            onCancelEdit={handleCancelEdit}
           />
         </div>
       )}
 
       <Timeline
         posts={posts}
-        onPostsChange={loadData}
+        onEditPost={handleEditPost}
+        onPostsChange={handlePostsChange}
       />
     </div>
   )
