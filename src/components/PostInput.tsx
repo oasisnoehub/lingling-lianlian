@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Person, MediaItem } from '../types'
 
 interface Emotion {
@@ -15,6 +15,13 @@ interface PostInputProps {
   onSubmit: (content: string, media: MediaItem[], emotion?: string) => void
   onImageUpload: (file: File) => Promise<MediaItem>
   onVideoUpload: (file: File) => Promise<MediaItem>
+  initialContent?: string
+  initialMedia?: MediaItem[]
+  initialEmotion?: string
+  onContentChange?: (content: string) => void
+  onMediaChange?: (media: MediaItem[]) => void
+  isEditing?: boolean
+  onCancelEdit?: () => void
 }
 
 function PostInput({
@@ -25,12 +32,35 @@ function PostInput({
   onSubmit,
   onImageUpload,
   onVideoUpload,
+  initialContent = '',
+  initialMedia = [],
+  initialEmotion = '',
+  onContentChange,
+  onMediaChange,
+  isEditing = false,
+  onCancelEdit,
 }: PostInputProps) {
-  const [content, setContent] = useState('')
-  const [media, setMedia] = useState<MediaItem[]>([])
+  const [content, setContent] = useState(initialContent)
+  const [media, setMedia] = useState<MediaItem[]>(initialMedia)
   const [uploading, setUploading] = useState(false)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
+
+  // Sync with external changes (for edit mode)
+  useEffect(() => {
+    setContent(initialContent)
+    setMedia(initialMedia)
+  }, [initialContent, initialMedia])
+
+  function handleContentChange(value: string) {
+    setContent(value)
+    onContentChange?.(value)
+  }
+
+  function handleMediaChange(newMedia: MediaItem[]) {
+    setMedia(newMedia)
+    onMediaChange?.(newMedia)
+  }
 
   async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -51,7 +81,7 @@ function PostInput({
     try {
       const uploadFn = type === 'image' ? onImageUpload : onVideoUpload
       const item = await uploadFn(file)
-      setMedia(prev => [...prev, item])
+      handleMediaChange([...media, item])
     } catch (err) {
       console.error('Upload failed:', err)
     } finally {
@@ -60,14 +90,16 @@ function PostInput({
   }
 
   function removeMedia(id: string) {
-    setMedia(prev => prev.filter(m => m.id !== id))
+    handleMediaChange(media.filter(m => m.id !== id))
   }
 
   function handleSubmit() {
     if (!content.trim() && media.length === 0) return
     onSubmit(content, media, selectedEmotion)
-    setContent('')
-    setMedia([])
+    if (!isEditing) {
+      setContent('')
+      handleMediaChange([])
+    }
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -84,7 +116,7 @@ function PostInput({
           className="input-field"
           placeholder="此刻在想什么……"
           value={content}
-          onChange={e => setContent(e.target.value)}
+          onChange={e => handleContentChange(e.target.value)}
           onKeyDown={handleKeyDown}
           rows={3}
         />
@@ -148,14 +180,25 @@ function PostInput({
       </div>
 
       {/* Submit Button */}
-      <button
-        className="submit-btn"
-        onClick={handleSubmit}
-        disabled={uploading || (!content.trim() && media.length === 0)}
-      >
-        <span>✈️</span>
-        <span>发布此刻</span>
-      </button>
+      <div className="submit-row">
+        {isEditing && (
+          <button
+            className="cancel-edit-btn"
+            onClick={onCancelEdit}
+          >
+            取消
+          </button>
+        )}
+        <button
+          className="submit-btn"
+          onClick={handleSubmit}
+          disabled={uploading || (!content.trim() && media.length === 0)}
+          style={{ flex: 1 }}
+        >
+          <span>✈️</span>
+          <span>{isEditing ? '保存修改' : '发布此刻'}</span>
+        </button>
+      </div>
     </div>
   )
 }

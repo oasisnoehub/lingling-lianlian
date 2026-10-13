@@ -490,8 +490,13 @@ button {
 }
 
 /* ==================== SUBMIT BUTTON ==================== */
+.submit-row {
+  display: flex;
+  gap: 12px;
+}
+
 .submit-btn {
-  width: 100%;
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -519,6 +524,22 @@ button {
   opacity: 0.5;
   cursor: not-allowed;
   transform: none;
+}
+
+.cancel-edit-btn {
+  padding: 14px 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s var(--ease-out);
+}
+
+.cancel-edit-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
 }
 
 /* ==================== TIMELINE ==================== */

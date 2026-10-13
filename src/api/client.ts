@@ -38,11 +38,16 @@ export async function createPost(data: CreatePostData): Promise<Post> {
   })
 }
 
-export async function updatePost(id: string, data: Partial<CreatePostData>): Promise<Post> {
+export async function updatePost(
+  id: string,
+  content: string,
+  emotion?: string,
+  media?: MediaItem[]
+): Promise<Post> {
   return fetchJson<Post>(`/posts/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify({ content, emotion, media }),
   })
 }
 

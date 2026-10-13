@@ -143,11 +143,17 @@ export function createPost(authorId: string, content: string, emotion: string | 
   }
 }
 
-export function updatePost(id: string, content: string, media?: MediaItem[]): Post | undefined {
+export function updatePost(
+  id: string,
+  content: string,
+  emotion?: string,
+  media?: MediaItem[]
+): Post | undefined {
   const existing = db.prepare('SELECT * FROM posts WHERE id = ?').get(id) as {
     id: string
     author_id: string
     content: string
+    emotion?: string
     media: string
     created_at: number
   } | undefined
@@ -155,7 +161,12 @@ export function updatePost(id: string, content: string, media?: MediaItem[]): Po
   if (!existing) return undefined
 
   const updates: string[] = ['content = ?', 'updated_at = ?']
-  const values: (string | number)[] = [content, Date.now()]
+  const values: (string | number | null)[] = [content, Date.now()]
+
+  if (emotion !== undefined) {
+    updates.push('emotion = ?')
+    values.push(emotion || null)
+  }
 
   if (media !== undefined) {
     updates.push('media = ?')
@@ -170,6 +181,7 @@ export function updatePost(id: string, content: string, media?: MediaItem[]): Po
     id,
     author_id: existing.author_id,
     content,
+    emotion: emotion !== undefined ? emotion : existing.emotion,
     media: media !== undefined ? media : JSON.parse(existing.media),
     created_at: existing.created_at,
     updated_at: Date.now(),

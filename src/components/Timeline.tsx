@@ -1,11 +1,21 @@
 import { useState } from 'react'
 import { PostWithAuthor, MediaItem } from '../types'
-import { updatePost, deletePost } from '../api/client'
+import { deletePost } from '../api/client'
 import MediaPreview from './MediaPreview'
 
 interface TimelineProps {
   posts: PostWithAuthor[]
+  onEditPost: (post: PostWithAuthor) => void
   onPostsChange: () => void
+}
+
+const emotionMap: Record<string, { emoji: string; label: string }> = {
+  happy: { emoji: '😊', label: '开心' },
+  calm: { emoji: '🌿', label: '平静' },
+  busy: { emoji: '💻', label: '忙碌' },
+  love: { emoji: '💖', label: '想你' },
+  tired: { emoji: '🌙', label: '疲惫' },
+  excited: { emoji: '🎉', label: '兴奋' },
 }
 
 function formatTime(timestamp: number): string {
@@ -23,19 +33,8 @@ function formatTime(timestamp: number): string {
   return new Date(timestamp).toLocaleDateString('zh-CN')
 }
 
-const emotionMap: Record<string, { emoji: string; label: string }> = {
-  happy: { emoji: '😊', label: '开心' },
-  calm: { emoji: '🌿', label: '平静' },
-  busy: { emoji: '💻', label: '忙碌' },
-  love: { emoji: '💖', label: '想你' },
-  tired: { emoji: '🌙', label: '疲惫' },
-  excited: { emoji: '🎉', label: '兴奋' },
-}
-
-function Timeline({ posts, onPostsChange }: TimelineProps) {
+function Timeline({ posts, onEditPost, onPostsChange }: TimelineProps) {
   const [previewMedia, setPreviewMedia] = useState<MediaItem | null>(null)
-  const [editingPost, setEditingPost] = useState<PostWithAuthor | null>(null)
-  const [editContent, setEditContent] = useState('')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null)
 
   async function handleDelete(postId: string) {
@@ -46,22 +45,6 @@ function Timeline({ posts, onPostsChange }: TimelineProps) {
     } catch (err) {
       console.error('Failed to delete post:', err)
     }
-  }
-
-  async function handleSaveEdit() {
-    if (!editingPost || !editContent.trim()) return
-    try {
-      await updatePost(editingPost.id, editContent.trim())
-      setEditingPost(null)
-      onPostsChange()
-    } catch (err) {
-      console.error('Failed to update post:', err)
-    }
-  }
-
-  function startEdit(post: PostWithAuthor) {
-    setEditingPost(post)
-    setEditContent(post.content)
   }
 
   if (posts.length === 0) {
@@ -99,7 +82,7 @@ function Timeline({ posts, onPostsChange }: TimelineProps) {
                   <div className="post-actions">
                     <button
                       className="post-action-btn"
-                      onClick={() => startEdit(post)}
+                      onClick={() => onEditPost(post)}
                       title="编辑"
                     >
                       ✎
@@ -112,68 +95,42 @@ function Timeline({ posts, onPostsChange }: TimelineProps) {
                       🗑
                     </button>
                   </div>
-                  {editingPost?.id === post.id ? (
-                    <div className="edit-form">
-                      <textarea
-                        className="edit-textarea"
-                        value={editContent}
-                        onChange={e => setEditContent(e.target.value)}
-                        rows={3}
-                        autoFocus
-                      />
-                      <div className="edit-actions">
-                        <button
-                          className="edit-cancel-btn"
-                          onClick={() => setEditingPost(null)}
+
+                  {post.content && (
+                    <div className="timeline-text">{post.content}</div>
+                  )}
+
+                  {post.media.length > 0 && (
+                    <div className={`timeline-media-grid ${mediaClass}`}>
+                      {post.media.map((item) => (
+                        <div
+                          key={item.id}
+                          className="timeline-media-item"
+                          onClick={() => setPreviewMedia(item)}
                         >
-                          取消
-                        </button>
-                        <button
-                          className="edit-save-btn"
-                          onClick={handleSaveEdit}
-                        >
-                          保存
-                        </button>
-                      </div>
+                          {item.type === 'image' ? (
+                            <img src={item.url} alt="" />
+                          ) : (
+                            <>
+                              <video src={item.url} />
+                              <div className="timeline-media-overlay">
+                                <div className="play-icon">▶</div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  ) : (
-                    <>
-                      {post.content && (
-                        <div className="timeline-text">{post.content}</div>
-                      )}
-                      {post.media.length > 0 && (
-                        <div className={`timeline-media-grid ${mediaClass}`}>
-                          {post.media.map((item) => (
-                            <div
-                              key={item.id}
-                              className="timeline-media-item"
-                              onClick={() => setPreviewMedia(item)}
-                            >
-                              {item.type === 'image' ? (
-                                <img src={item.url} alt="" />
-                              ) : (
-                                <>
-                                  <video src={item.url} />
-                                  <div className="timeline-media-overlay">
-                                    <div className="play-icon">▶</div>
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {post.emotion && emotionMap[post.emotion] && (
-                        <div className="timeline-emotion">
-                          {emotionMap[post.emotion].emoji} {emotionMap[post.emotion].label}
-                        </div>
-                      )}
-                    </>
+                  )}
+
+                  {post.emotion && emotionMap[post.emotion] && (
+                    <div className="timeline-emotion">
+                      {emotionMap[post.emotion].emoji} {emotionMap[post.emotion].label}
+                    </div>
                   )}
                 </div>
               </div>
 
-              {/* Delete Confirmation */}
               {showDeleteConfirm === post.id && (
                 <div className="delete-confirm-overlay" onClick={() => setShowDeleteConfirm(null)}>
                   <div className="delete-confirm-dialog" onClick={e => e.stopPropagation()}>
