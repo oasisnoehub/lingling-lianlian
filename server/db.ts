@@ -48,7 +48,7 @@ const existingPersons = db.prepare('SELECT COUNT(*) as count FROM persons').get(
 if (existingPersons.count === 0) {
   const insertPerson = db.prepare('INSERT INTO persons (id, name, avatar_color, created_at) VALUES (?, ?, ?, ?)')
   insertPerson.run('person-a', 'Ling Ling', '#4f8ef7', Date.now())
-  insertPerson.run('person-b', 'Lian Lian', '#a855f7', Date.now())
+  insertPerson.run('person-b', 'Lian Lian', '#60A5FA', Date.now())
 }
 
 // Types
