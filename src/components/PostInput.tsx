@@ -174,8 +174,19 @@ function PostInput({
           />
         </label>
         <label className="attachment-btn">
+          <span>▶</span>
+          <span>视频</span>
+          <input
+            ref={videoInputRef}
+            type="file"
+            accept="video/*"
+            style={{ display: 'none' }}
+            onChange={handleVideoSelect}
+          />
+        </label>
+        <label className="attachment-btn">
           <span>⌂</span>
-          <span>添加位置</span>
+          <span>位置</span>
         </label>
       </div>
 
