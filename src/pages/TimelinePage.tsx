@@ -49,12 +49,13 @@ function TimelinePage() {
     }
   }
 
-  async function handleSubmit(content: string, media: MediaItem[]) {
+  async function handleSubmit(content: string, media: MediaItem[], emotion?: string) {
     if (!personId || (!content.trim() && media.length === 0)) return
     try {
       const newPost = await createPost({
         author_id: personId,
         content: content.trim(),
+        emotion,
         media,
       })
       const author = persons.find(p => p.id === personId)
@@ -63,6 +64,7 @@ function TimelinePage() {
           ...newPost,
           author,
           media: media,
+          emotion: emotion,
         }, ...prev])
       }
       setSelectedEmotion('')
@@ -129,7 +131,10 @@ function TimelinePage() {
         </div>
       )}
 
-      <Timeline posts={posts} />
+      <Timeline
+        posts={posts}
+        onPostsChange={loadData}
+      />
     </div>
   )
 }

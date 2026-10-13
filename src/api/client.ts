@@ -26,6 +26,7 @@ export async function getTimeline(): Promise<PostWithAuthor[]> {
 export interface CreatePostData {
   author_id: string
   content: string
+  emotion?: string
   media?: MediaItem[]
 }
 

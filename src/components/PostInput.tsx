@@ -12,7 +12,7 @@ interface PostInputProps {
   emotions: Emotion[]
   selectedEmotion: string
   onSelectEmotion: (id: string) => void
-  onSubmit: (content: string, media: MediaItem[]) => void
+  onSubmit: (content: string, media: MediaItem[], emotion?: string) => void
   onImageUpload: (file: File) => Promise<MediaItem>
   onVideoUpload: (file: File) => Promise<MediaItem>
 }
@@ -65,7 +65,7 @@ function PostInput({
 
   function handleSubmit() {
     if (!content.trim() && media.length === 0) return
-    onSubmit(content, media)
+    onSubmit(content, media, selectedEmotion)
     setContent('')
     setMedia([])
   }
