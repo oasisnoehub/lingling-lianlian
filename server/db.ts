@@ -25,6 +25,7 @@ db.exec(`
     id TEXT PRIMARY KEY,
     author_id TEXT NOT NULL,
     content TEXT NOT NULL,
+    emotion TEXT,
     media TEXT NOT NULL DEFAULT '[]',
     created_at INTEGER NOT NULL,
     updated_at INTEGER,
@@ -34,6 +35,13 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_posts_author ON posts(author_id);
   CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at DESC);
 `)
+
+// Add emotion column if it doesn't exist (for existing databases)
+try {
+  db.exec('ALTER TABLE posts ADD COLUMN emotion TEXT')
+} catch (e) {
+  // Column already exists, ignore
+}
 
 // Seed default persons if not exist
 const existingPersons = db.prepare('SELECT COUNT(*) as count FROM persons').get() as { count: number }
@@ -64,6 +72,7 @@ export interface Post {
   id: string
   author_id: string
   content: string
+  emotion?: string
   media: MediaItem[]
   created_at: number
   updated_at?: number
@@ -107,6 +116,7 @@ export function getTimeline(): PostWithAuthor[] {
     id: post.id,
     author_id: post.author_id,
     content: post.content,
+    emotion: (post as any).emotion || undefined,
     media: JSON.parse(post.media) as MediaItem[],
     created_at: post.created_at,
     updated_at: post.updated_at,
@@ -114,19 +124,20 @@ export function getTimeline(): PostWithAuthor[] {
   }))
 }
 
-export function createPost(authorId: string, content: string, media: MediaItem[] = []): Post {
+export function createPost(authorId: string, content: string, emotion: string | undefined, media: MediaItem[] = []): Post {
   const id = `post-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   const now = Date.now()
 
   db.prepare(`
-    INSERT INTO posts (id, author_id, content, media, created_at)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(id, authorId, content, JSON.stringify(media), now)
+    INSERT INTO posts (id, author_id, content, emotion, media, created_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(id, authorId, content, emotion || null, JSON.stringify(media), now)
 
   return {
     id,
     author_id: authorId,
     content,
+    emotion,
     media,
     created_at: now,
   }

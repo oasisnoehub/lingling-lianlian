@@ -18,6 +18,7 @@ export interface Post {
   id: string;
   author_id: string;
   content: string;
+  emotion?: string;
   media: MediaItem[];
   created_at: number;
   updated_at?: number;

@@ -569,6 +569,173 @@ button {
   color: var(--text-muted);
 }
 
+.timeline-emotion {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: rgba(29, 94, 255, 0.15);
+  border-radius: 20px;
+  font-size: 12px;
+  color: #60A5FA;
+  margin-top: 8px;
+}
+
+/* ==================== POST ACTIONS ==================== */
+.post-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+}
+
+.post-action-btn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  transition: all 0.15s var(--ease-out);
+}
+
+.post-action-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--text-primary);
+}
+
+.post-action-btn.delete:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #EF4444;
+}
+
+/* ==================== EDIT FORM ==================== */
+.edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.edit-textarea {
+  width: 100%;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-glass);
+  border-radius: 12px;
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.6;
+  resize: none;
+  font-family: inherit;
+}
+
+.edit-textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.edit-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.edit-cancel-btn {
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-glass);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  transition: all 0.15s var(--ease-out);
+}
+
+.edit-cancel-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+.edit-save-btn {
+  padding: 8px 16px;
+  background: var(--primary);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s var(--ease-out);
+}
+
+.edit-save-btn:hover {
+  background: #1652F0;
+}
+
+/* ==================== DELETE CONFIRM ==================== */
+.delete-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+}
+
+.delete-confirm-dialog {
+  background: var(--surface-glass);
+  backdrop-filter: blur(24px);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  max-width: 300px;
+  text-align: center;
+}
+
+.delete-confirm-dialog p {
+  color: var(--text-primary);
+  font-size: 15px;
+  margin-bottom: 20px;
+}
+
+.delete-confirm-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.delete-cancel-btn {
+  flex: 1;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-glass);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  transition: all 0.15s var(--ease-out);
+}
+
+.delete-cancel-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.delete-confirm-btn {
+  flex: 1;
+  padding: 10px 16px;
+  background: #EF4444;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.15s var(--ease-out);
+}
+
+.delete-confirm-btn:hover {
+  background: #DC2626;
+}
+
 .timeline-card {
   background: var(--surface-glass);
   backdrop-filter: blur(16px);
@@ -576,6 +743,7 @@ button {
   border: 1px solid var(--border-glass);
   border-radius: var(--radius-lg);
   padding: 16px;
+  position: relative;
 }
 
 .timeline-text {

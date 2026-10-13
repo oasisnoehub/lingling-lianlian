@@ -16,13 +16,13 @@ router.get('/timeline', (_req, res) => {
 
 router.post('/', (req, res) => {
   try {
-    const { author_id, content, media } = req.body
+    const { author_id, content, emotion, media } = req.body
 
     if (!author_id || !content) {
       return res.status(400).json({ error: 'author_id and content are required' })
     }
 
-    const post = createPost(author_id, content, media as MediaItem[] || [])
+    const post = createPost(author_id, content, emotion, media as MediaItem[] || [])
     res.status(201).json(post)
   } catch (err) {
     console.error('Error creating post:', err)
