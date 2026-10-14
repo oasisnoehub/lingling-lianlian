@@ -10,7 +10,7 @@ import uploadRouter from './routes/upload.js'
 import { getTimeline } from './db.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const rootDir = join(__dirname, '..')
+const rootDir = join(__dirname, '..', '..')
 const uploadsDir = join(rootDir, 'uploads')
 
 const app = express()
