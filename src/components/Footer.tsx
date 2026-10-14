@@ -4,7 +4,9 @@ function Footer() {
       <div className="footer-content">
         <span className="footer-brand">L✦L</span>
         <span className="footer-divider">·</span>
-        <span className="footer-text">记录彼此的此刻</span>
+        <a href="https://linglian.oasisnoe.com.cn" className="footer-link">linglian.oasisnoe.com.cn</a>
+        <span className="footer-divider">·</span>
+        <span className="footer-text">© 2026 京ICP备2025122370号-1</span>
       </div>
     </footer>
   )
