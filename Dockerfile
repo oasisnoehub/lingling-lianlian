@@ -1,4 +1,4 @@
-# Stage 1: Build
+# Stage 1: Build frontend
 FROM node:20-alpine AS builder
 
 WORKDIR /app
@@ -15,7 +15,20 @@ RUN npm config set registry https://registry.npmmirror.com && \
 COPY . .
 RUN npm run build
 
-# Stage 2: Production
+# Stage 2: Build server (separate to avoid vite overwriting)
+FROM node:20-alpine AS server-builder
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm config set registry https://registry.npmmirror.com && \
+    npm ci
+
+COPY server ./server
+COPY tsconfig.server.json ./
+RUN npx tsc -p tsconfig.server.json
+
+# Stage 3: Production
 FROM node:20-alpine
 
 WORKDIR /app
@@ -29,9 +42,11 @@ COPY package.json package-lock.json ./
 RUN npm config set registry https://registry.npmmirror.com && \
     npm ci --omit=dev
 
-# Copy built server and client from builder
+# Copy built frontend from builder
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/server ./server
+
+# Copy compiled server from server-builder
+COPY --from=server-builder /app/dist/server ./dist/server
 COPY --from=builder /app/uploads ./uploads
 
 # Create data directory for SQLite database
@@ -43,4 +58,4 @@ ENV DATA_DIR=/app/data
 
 EXPOSE 3456
 
-CMD ["node", "server/index.js"]
+CMD ["node", "dist/server/index.js"]

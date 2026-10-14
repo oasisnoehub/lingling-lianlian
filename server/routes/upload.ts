@@ -2,7 +2,7 @@ import { Router } from 'express'
 import multer from 'multer'
 import { join, dirname, extname } from 'path'
 import { fileURLToPath } from 'url'
-import { mkdirSync, existsSync } from 'fs'
+import { mkdirSync } from 'fs'
 import { v4 as uuidv4 } from 'uuid'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
