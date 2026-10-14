@@ -186,22 +186,22 @@ docker save lingling-lianlian:latest -o lingling-lianlian.tar
 gzip lingling-lianlian.tar
 
 # 3. 传输到远程服务器
-scp lingling-lianlian.tar.gz root@SERVER_IP:/root/
+scp lingling-lianlian.tar.gz root@39.108.89.255:/root/
 ```
 
 ### 服务器部署
 
 ```bash
 # 1. SSH 登录服务器
-ssh root@SERVER_IP
+ssh root@39.108.89.255
 
 # 2. 加载镜像
 gunzip -c lingling-lianlian.tar.gz | docker load
 # 或: docker load -i lingling-lianlian.tar.gz
 
 # 3. 创建项目目录并复制 docker-compose.yml
-mkdir -p /root/lingling_lianlian
-cd /root/lingling_lianlian
+mkdir -p /appdata/lingling_lianlian
+cd /appdata/lingling_lianlian
 
 # 4. 启动服务（保留现有卷，数据不丢失）
 docker-compose down
@@ -276,10 +276,10 @@ docker save lingling-lianlian:latest -o lingling-lianlian.tar
 gzip lingling-lianlian.tar
 
 # 传输到服务器
-scp lingling-lianlian.tar.gz root@SERVER_IP:/root/
+scp lingling-lianlian.tar.gz root@39.108.89.255:/root/
 
 # 服务器端更新
-ssh root@SERVER_IP
+ssh root@39.108.89.255
 gunzip -c lingling-lianlian.tar.gz | docker load
-cd /root/lingling_lianlian && docker-compose down && docker-compose up -d
+cd /appdata/lingling_lianlian && docker-compose down && docker-compose up -d
 ```
