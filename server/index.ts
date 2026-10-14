@@ -20,9 +20,14 @@ const PORT = process.env.PORT || 3456
 app.use(cors())
 app.use(express.json({ limit: '10mb' }))
 
-// Serve uploaded files
+// Serve uploaded files with long-term caching
 if (existsSync(uploadsDir)) {
-  app.use('/uploads', express.static(uploadsDir))
+  app.use('/uploads', express.static(uploadsDir, {
+    maxAge: '1y',
+    etag: true,
+    lastModified: true,
+    immutable: true,
+  }))
 }
 
 // API Routes
