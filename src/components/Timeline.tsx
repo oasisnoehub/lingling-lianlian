@@ -109,10 +109,16 @@ function Timeline({ posts, onEditPost, onPostsChange }: TimelineProps) {
                           onClick={() => setPreviewMedia(item)}
                         >
                           {item.type === 'image' ? (
-                            <img src={item.url} alt="" />
+                            <img
+                              src={item.url}
+                              alt=""
+                              loading="lazy"
+                              className="media-img-lazy"
+                              onLoad={(e) => (e.target as HTMLImageElement).classList.add('media-img-lazy-loaded')}
+                            />
                           ) : (
                             <>
-                              <video src={item.url} />
+                              <video src={item.url} preload="metadata" />
                               <div className="timeline-media-overlay">
                                 <div className="play-icon">▶</div>
                               </div>
