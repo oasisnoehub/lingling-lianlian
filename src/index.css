@@ -1560,7 +1560,8 @@ button {
   justify-content: center;
   gap: 8px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 11px;
+  flex-wrap: wrap;
 }
 
 .footer-brand {
@@ -1573,5 +1574,15 @@ button {
 }
 
 .footer-text {
-  opacity: 0.8;
+  opacity: 0.7;
+}
+
+.footer-link {
+  color: var(--text-muted);
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.footer-link:hover {
+  opacity: 1;
 }
