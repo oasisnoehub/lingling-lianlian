@@ -1547,3 +1547,31 @@ button {
   transform: translateY(-1px);
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
 }
+
+/* ==================== FOOTER ==================== */
+.app-footer {
+  padding: 24px 0 16px;
+  margin-top: auto;
+}
+
+.footer-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.footer-brand {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.footer-divider {
+  opacity: 0.5;
+}
+
+.footer-text {
+  opacity: 0.8;
+}

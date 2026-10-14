@@ -4,6 +4,7 @@ import { Person, PostWithAuthor, MediaItem } from '../types'
 import { getPersons, getTimeline, createPost, updatePost, uploadImage, uploadVideo } from '../api/client'
 import PostInput from '../components/PostInput'
 import Timeline from '../components/Timeline'
+import Footer from '../components/Footer'
 
 interface Emotion {
   emoji: string
@@ -178,6 +179,8 @@ function TimelinePage() {
         onEditPost={handleEditPost}
         onPostsChange={handlePostsChange}
       />
+
+      <Footer />
     </div>
   )
 }

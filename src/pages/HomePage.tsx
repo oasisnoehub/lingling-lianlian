@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import Footer from '../components/Footer'
 
 const PASSWORD = 'lingling'
 const PERSON_PASSWORD = 'lianlian'
@@ -97,6 +98,9 @@ function HomePage() {
           <p className="hint-text">输入密码进入各自的时间线</p>
         </div>
       </main>
+
+      {/* Footer */}
+      <Footer />
 
       {/* Password Modal */}
       {showPasswordModal && (
