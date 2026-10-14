@@ -6,10 +6,12 @@ services:
       - traefik_public
     volumes:
       - lingling-data:/app/data
+      - lingling-uploads:/app/uploads
     environment:
       - NODE_ENV=production
       - PORT=3456
       - DATA_DIR=/app/data
+      - UPLOADS_DIR=/app/uploads
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
@@ -29,3 +31,4 @@ networks:
 
 volumes:
   lingling-data:
+  lingling-uploads:

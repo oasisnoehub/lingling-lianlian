@@ -7,11 +7,11 @@ import { existsSync } from 'fs'
 import personsRouter from './routes/persons.js'
 import postsRouter from './routes/posts.js'
 import uploadRouter from './routes/upload.js'
-import { getTimeline } from './db.js'
+import { getTimeline, UPLOADS_DIR } from './db.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(__dirname, '..', '..')
-const uploadsDir = join(rootDir, 'uploads')
+const uploadsDir = UPLOADS_DIR
 
 const app = express()
 const PORT = process.env.PORT || 3456

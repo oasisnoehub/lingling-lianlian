@@ -1,13 +1,22 @@
 import Database from 'better-sqlite3'
-import { join, dirname } from 'path'
-import { fileURLToPath } from 'url'
-import { mkdirSync } from 'fs'
+import { join } from 'path'
+import { mkdirSync, existsSync } from 'fs'
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const dataDir = join(__dirname, '..', 'data')
-mkdirSync(dataDir, { recursive: true })
+// In production: DATA_DIR=/app/data, UPLOADS_DIR=/app/uploads
+// Both are mounted as Docker volumes
+const DATA_DIR = process.env.DATA_DIR || '/app/data'
+const UPLOADS_DIR = process.env.UPLOADS_DIR || '/app/uploads'
 
-const db = new Database(join(dataDir, 'posts.db'))
+// Ensure directories exist
+if (!existsSync(DATA_DIR)) {
+  mkdirSync(DATA_DIR, { recursive: true })
+}
+if (!existsSync(UPLOADS_DIR)) {
+  mkdirSync(UPLOADS_DIR, { recursive: true })
+}
+
+const dbPath = join(DATA_DIR, 'posts.db')
+const db = new Database(dbPath)
 
 // Enable WAL mode for better concurrency
 db.pragma('journal_mode = WAL')
@@ -81,6 +90,9 @@ export interface Post {
 export interface PostWithAuthor extends Post {
   author: Person
 }
+
+// Export paths for use in index.ts
+export { DATA_DIR, UPLOADS_DIR }
 
 // Queries
 export function getAllPersons(): Person[] {
