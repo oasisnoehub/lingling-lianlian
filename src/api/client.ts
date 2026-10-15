@@ -1,4 +1,4 @@
-import { Person, Post, PostWithAuthor, MediaItem } from '../types'
+import { Person, Post, PostWithAuthor, MediaItem, PostLocation } from '../types'
 
 const API_BASE = '/api'
 
@@ -28,6 +28,33 @@ export interface CreatePostData {
   content: string
   emotion?: string
   media?: MediaItem[]
+  location?: PostLocation | null
+}
+
+export interface ReverseLocationResult {
+  formatted_address: string
+  nearest_poi?: string
+  latitude: number
+  longitude: number
+}
+
+export async function reverseLocation(latitude: number, longitude: number): Promise<ReverseLocationResult> {
+  const query = new URLSearchParams({
+    latitude: String(latitude),
+    longitude: String(longitude),
+  })
+  const res = await fetch(`${API_BASE}/location/reverse?${query}`)
+  let result: ReverseLocationResult & { error?: string }
+  try {
+    result = await res.json() as ReverseLocationResult & { error?: string }
+  } catch {
+    throw new Error('定位服务响应异常，请稍后重试')
+  }
+
+  if (!res.ok) {
+    throw new Error(result.error || '地址获取失败，请稍后重试')
+  }
+  return result
 }
 
 export async function createPost(data: CreatePostData): Promise<Post> {
@@ -42,12 +69,13 @@ export async function updatePost(
   id: string,
   content: string,
   emotion?: string,
-  media?: MediaItem[]
+  media?: MediaItem[],
+  location?: PostLocation | null
 ): Promise<Post> {
   return fetchJson<Post>(`/posts/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content, emotion, media }),
+    body: JSON.stringify({ content, emotion, media, location }),
   })
 }
 

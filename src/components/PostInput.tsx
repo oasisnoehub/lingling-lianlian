@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Person, MediaItem } from '../types'
+import { Person, MediaItem, PostLocation } from '../types'
 import imageCompression from 'browser-image-compression'
+import { reverseLocation } from '../api/client'
 
 interface Emotion {
   emoji: string
@@ -20,12 +21,13 @@ interface PostInputProps {
   emotions: Emotion[]
   selectedEmotion: string
   onSelectEmotion: (id: string) => void
-  onSubmit: (content: string, media: MediaItem[], emotion?: string) => void
+  onSubmit: (content: string, media: MediaItem[], emotion?: string, location?: PostLocation | null) => void
   onImageUpload: (file: File, onProgress?: (p: number) => void) => Promise<MediaItem>
   onVideoUpload: (file: File, onProgress?: (p: number) => void) => Promise<MediaItem>
   initialContent?: string
   initialMedia?: MediaItem[]
   initialEmotion?: string
+  initialLocation?: PostLocation | null
   onContentChange?: (content: string) => void
   onMediaChange?: (media: MediaItem[]) => void
   isEditing?: boolean
@@ -43,6 +45,7 @@ function PostInput({
   initialContent = '',
   initialMedia = [],
   initialEmotion = '',
+  initialLocation = null,
   onContentChange,
   onMediaChange,
   isEditing = false,
@@ -52,6 +55,9 @@ function PostInput({
   const [media, setMedia] = useState<MediaItem[]>(initialMedia)
   const [uploadingItems, setUploadingItems] = useState<UploadingItem[]>([])
   const [isUploading, setIsUploading] = useState(false)
+  const [location, setLocation] = useState<PostLocation | null>(initialLocation)
+  const [isLocating, setIsLocating] = useState(false)
+  const [locationError, setLocationError] = useState('')
   const imageInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
 
@@ -60,7 +66,9 @@ function PostInput({
   useEffect(() => {
     setContent(initialContent)
     setMedia(initialMedia)
-  }, [initialContent, initialMedia])
+    setLocation(initialLocation)
+    setLocationError('')
+  }, [initialContent, initialMedia, initialLocation])
 
   function handleContentChange(value: string) {
     setContent(value)
@@ -148,12 +156,55 @@ function PostInput({
     setUploadingItems(prev => prev.filter(i => i.id !== id))
   }
 
+  function handleLocate() {
+    setLocationError('')
+    if (!navigator.geolocation) {
+      setLocationError('当前浏览器不支持定位，请检查浏览器设置')
+      return
+    }
+
+    setIsLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      async position => {
+        try {
+          const result = await reverseLocation(position.coords.latitude, position.coords.longitude)
+          setLocation({
+            address: result.formatted_address,
+            name: result.nearest_poi,
+            latitude: result.latitude,
+            longitude: result.longitude,
+          })
+        } catch (err) {
+          setLocationError(err instanceof Error ? err.message : '获取地址失败，请稍后重试')
+        } finally {
+          setIsLocating(false)
+        }
+      },
+      error => {
+        const message = error.code === error.PERMISSION_DENIED
+          ? '定位权限被拒绝，请在浏览器设置中允许访问位置'
+          : error.code === error.TIMEOUT
+            ? '定位超时，请检查网络和定位设置后重试'
+            : '定位失败，请检查设备定位设置后重试'
+        setLocationError(message)
+        setIsLocating(false)
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    )
+  }
+
+  function removeLocation() {
+    setLocation(null)
+    setLocationError('')
+  }
+
   function handleSubmit() {
     if (!content.trim() && media.length === 0) return
-    onSubmit(content, media, selectedEmotion)
+    onSubmit(content, media, selectedEmotion, location)
     if (!isEditing) {
       setContent('')
       handleMediaChange([])
+      setLocation(null)
     }
   }
 
@@ -277,11 +328,37 @@ function PostInput({
             onChange={handleVideoSelect}
           />
         </label>
-        <label className="attachment-btn">
+        <button
+          type="button"
+          className="attachment-btn location-button"
+          onClick={handleLocate}
+          disabled={isLocating}
+        >
           <span>⌂</span>
-          <span>位置</span>
-        </label>
+          <span>{isLocating ? '定位中...' : '位置'}</span>
+        </button>
       </div>
+
+      {location && (
+        <div className="selected-location">
+          <span className="selected-location-icon">📍</span>
+          <span className="selected-location-text">
+            {location.name ? `${location.name} · ` : ''}{location.address}
+          </span>
+          <button
+            type="button"
+            className="remove-location-btn"
+            onClick={removeLocation}
+            aria-label="删除已选位置"
+            title="删除位置"
+          >
+            ×
+          </button>
+        </div>
+      )}
+      {locationError && (
+        <div className="location-error" role="alert">{locationError}</div>
+      )}
 
       {/* Submit Button */}
       <div className="submit-row">

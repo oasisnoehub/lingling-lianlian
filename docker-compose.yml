@@ -12,6 +12,7 @@ services:
       - PORT=3456
       - DATA_DIR=/app/data
       - UPLOADS_DIR=/app/uploads
+      - AMAP_KEY=${AMAP_KEY}
     restart: unless-stopped
     labels:
       - "traefik.enable=true"

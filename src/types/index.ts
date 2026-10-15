@@ -14,12 +14,20 @@ export interface MediaItem {
   height?: number;
 }
 
+export interface PostLocation {
+  address: string;
+  name?: string;
+  latitude: number;
+  longitude: number;
+}
+
 export interface Post {
   id: string;
   author_id: string;
   content: string;
   emotion?: string;
   media: MediaItem[];
+  location?: PostLocation;
   created_at: number;
   updated_at?: number;
 }
