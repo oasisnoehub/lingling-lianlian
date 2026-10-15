@@ -5,7 +5,7 @@ import Footer from '../components/Footer'
 
 const PERSON_COLORS: Record<string, { color: string; name: string }> = {
   'person-a': { color: '#4f8ef7', name: 'Lingling' },
-  'person-b': { color: '#B8D4E8', name: 'Lianlian' },
+  'person-b': { color: '#10B981', name: 'Lianlian' },
 }
 
 function hexToRgba(hex: string, alpha: number): string {
@@ -53,7 +53,9 @@ function HomePage() {
     }
   }
 
-  const personColor = selectedPerson ? PERSON_COLORS[selectedPerson].color : '#4f8ef7'
+  const personColor = selectedPerson === 'person-b'
+    ? '#64D5FF'
+    : (selectedPerson ? PERSON_COLORS[selectedPerson].color : '#4f8ef7')
 
   return (
     <div className="app-container">
@@ -111,7 +113,7 @@ function HomePage() {
               <div
                 className="person-avatar"
                 style={{
-                  background: `linear-gradient(135deg, ${PERSON_COLORS['person-b'].color} 0%, ${hexToRgba(PERSON_COLORS['person-b'].color, 0.6)} 100%)`,
+                  background: PERSON_COLORS['person-b'].color,
                   boxShadow: `0 0 30px ${PERSON_COLORS['person-b'].color}40`,
                 }}
               >
@@ -136,7 +138,7 @@ function HomePage() {
             <div
               className="unlock-avatar"
               style={{
-                background: `linear-gradient(135deg, ${personColor} 0%, ${hexToRgba(personColor, 0.53)} 100%)`,
+                background: personColor,
                 boxShadow: `0 0 40px ${personColor}40`,
               }}
             >
