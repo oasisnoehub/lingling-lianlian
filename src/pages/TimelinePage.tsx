@@ -6,6 +6,13 @@ import PostInput from '../components/PostInput'
 import Timeline from '../components/Timeline'
 import Footer from '../components/Footer'
 
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
 interface Emotion {
   emoji: string
   label: string
@@ -157,7 +164,7 @@ function TimelinePage() {
             <div
               className="card-avatar"
               style={{
-                background: `linear-gradient(135deg, ${currentPerson.avatar_color} 0%, ${currentPerson.avatar_color}aa 100%)`
+                background: `linear-gradient(135deg, ${currentPerson.avatar_color} 0%, ${hexToRgba(currentPerson.avatar_color, 0.67)} 100%)`
               }}
             >
               {currentPerson.name.charAt(0)}

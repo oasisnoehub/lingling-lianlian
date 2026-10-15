@@ -3,6 +3,13 @@ import { PostWithAuthor, MediaItem } from '../types'
 import { deletePost } from '../api/client'
 import MediaPreview from './MediaPreview'
 
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
 interface TimelineProps {
   posts: PostWithAuthor[]
   onEditPost: (post: PostWithAuthor) => void
@@ -75,7 +82,7 @@ function Timeline({ posts, onEditPost, onPostsChange }: TimelineProps) {
             <div key={post.id} className="timeline-item">
               <div
                 className="timeline-avatar"
-                style={{ background: `linear-gradient(135deg, ${post.author.avatar_color} 0%, ${post.author.avatar_color}99 100%)` }}
+                style={{ background: `linear-gradient(135deg, ${post.author.avatar_color} 0%, ${hexToRgba(post.author.avatar_color, 0.6)} 100%)` }}
               >
                 {post.author.name.charAt(0)}
               </div>
