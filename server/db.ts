@@ -46,9 +46,11 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at DESC);
 `)
 
-const postColumns = db.prepare('PRAGMA table_info(posts)').all() as Array<{ name: string }>
-if (!postColumns.some(column => column.name === 'location')) {
+// Add location column if it doesn't exist (for existing databases)
+try {
   db.exec('ALTER TABLE posts ADD COLUMN location TEXT')
+} catch (e) {
+  // Column already exists, ignore
 }
 
 // Add emotion column if it doesn't exist (for existing databases)
@@ -159,8 +161,8 @@ export function createPost(
   media: MediaItem[] = [],
   location?: PostLocation | null
 ): Post {
-  const id = `post-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   const now = Date.now()
+  const id = `post-${now}-${Math.random().toString(36).slice(2, 8)}`
 
   db.prepare(`
     INSERT INTO posts (id, author_id, content, emotion, media, location, created_at)

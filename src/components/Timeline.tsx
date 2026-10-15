@@ -24,18 +24,19 @@ const emotionMap: Record<string, { emoji: string; label: string }> = {
   sleepy: { emoji: '😴', label: '困倦' },
 }
 
+// Hoist formatter to avoid creating new instance per call
+const timeFormatter = new Intl.DateTimeFormat('zh-CN', {
+  timeZone: 'Asia/Shanghai',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+})
+
 function formatTime(timestamp: number): string {
-  return new Intl.DateTimeFormat('zh-CN', {
-    timeZone: 'Asia/Shanghai',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  })
-    .format(new Date(timestamp))
-    .replace(/\//g, '-')
+  return timeFormatter.format(new Date(timestamp)).replace(/\//g, '-')
 }
 
 function Timeline({ posts, onEditPost, onPostsChange }: TimelineProps) {
