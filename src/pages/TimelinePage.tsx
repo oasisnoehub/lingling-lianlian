@@ -164,7 +164,7 @@ function TimelinePage() {
             <div
               className="card-avatar"
               style={{
-                background: `linear-gradient(135deg, ${currentPerson.avatar_color} 0%, ${hexToRgba(currentPerson.avatar_color, 0.67)} 100%)`
+                background: currentPerson.avatar_color
               }}
             >
               {currentPerson.name.charAt(0)}

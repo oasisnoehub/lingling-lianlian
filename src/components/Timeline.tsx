@@ -82,7 +82,7 @@ function Timeline({ posts, onEditPost, onPostsChange }: TimelineProps) {
             <div key={post.id} className="timeline-item">
               <div
                 className="timeline-avatar"
-                style={{ background: `linear-gradient(135deg, ${post.author.avatar_color} 0%, ${hexToRgba(post.author.avatar_color, 0.6)} 100%)` }}
+                style={{ background: post.author.avatar_color }}
               >
                 {post.author.name.charAt(0)}
               </div>
