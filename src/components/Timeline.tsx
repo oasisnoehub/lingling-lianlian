@@ -16,21 +16,26 @@ const emotionMap: Record<string, { emoji: string; label: string }> = {
   love: { emoji: '💖', label: '想你' },
   tired: { emoji: '🌙', label: '疲惫' },
   excited: { emoji: '🎉', label: '兴奋' },
+  blessed: { emoji: '🥰', label: '幸福' },
+  hopeful: { emoji: '✨', label: '期待' },
+  sad: { emoji: '😢', label: '难过' },
+  wronged: { emoji: '🥺', label: '委屈' },
+  angry: { emoji: '😠', label: '生气' },
+  sleepy: { emoji: '😴', label: '困倦' },
 }
 
 function formatTime(timestamp: number): string {
-  const now = Date.now()
-  const diff = now - timestamp
-  const minutes = Math.floor(diff / 60000)
-  const hours = Math.floor(diff / 3600000)
-  const days = Math.floor(diff / 86400000)
-
-  if (minutes < 1) return '刚刚'
-  if (minutes < 60) return `${minutes}分钟前`
-  if (hours < 24) return `${hours}小时前`
-  if (days < 30) return `${days}天前`
-
-  return new Date(timestamp).toLocaleDateString('zh-CN')
+  return new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  })
+    .format(new Date(timestamp))
+    .replace(/\//g, '-')
 }
 
 function Timeline({ posts, onEditPost, onPostsChange }: TimelineProps) {
@@ -98,6 +103,16 @@ function Timeline({ posts, onEditPost, onPostsChange }: TimelineProps) {
 
                   {post.content && (
                     <div className="timeline-text">{post.content}</div>
+                  )}
+
+                  {post.location && (
+                    <div className="timeline-location">
+                      <span aria-hidden="true">📍</span>
+                      <span>
+                        {post.location.name ? `${post.location.name} · ` : ''}
+                        {post.location.address}
+                      </span>
+                    </div>
                   )}
 
                   {post.media.length > 0 && (
