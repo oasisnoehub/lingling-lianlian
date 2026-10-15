@@ -36,6 +36,7 @@ db.exec(`
     content TEXT NOT NULL,
     emotion TEXT,
     media TEXT NOT NULL DEFAULT '[]',
+    location TEXT,
     created_at INTEGER NOT NULL,
     updated_at INTEGER,
     FOREIGN KEY (author_id) REFERENCES persons(id)
@@ -44,6 +45,11 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_posts_author ON posts(author_id);
   CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at DESC);
 `)
+
+const postColumns = db.prepare('PRAGMA table_info(posts)').all() as Array<{ name: string }>
+if (!postColumns.some(column => column.name === 'location')) {
+  db.exec('ALTER TABLE posts ADD COLUMN location TEXT')
+}
 
 // Add emotion column if it doesn't exist (for existing databases)
 try {
@@ -77,12 +83,20 @@ export interface MediaItem {
   height?: number
 }
 
+export interface PostLocation {
+  address: string
+  name?: string
+  latitude: number
+  longitude: number
+}
+
 export interface Post {
   id: string
   author_id: string
   content: string
   emotion?: string
   media: MediaItem[]
+  location?: PostLocation
   created_at: number
   updated_at?: number
 }
@@ -119,6 +133,7 @@ export function getTimeline(): PostWithAuthor[] {
     author_id: string
     content: string
     media: string
+    location: string | null
     created_at: number
     updated_at?: number
     author_json: string
@@ -130,20 +145,27 @@ export function getTimeline(): PostWithAuthor[] {
     content: post.content,
     emotion: (post as any).emotion || undefined,
     media: JSON.parse(post.media) as MediaItem[],
+    location: post.location ? JSON.parse(post.location) as PostLocation : undefined,
     created_at: post.created_at,
     updated_at: post.updated_at,
     author: JSON.parse(post.author_json) as Person,
   }))
 }
 
-export function createPost(authorId: string, content: string, emotion: string | undefined, media: MediaItem[] = []): Post {
+export function createPost(
+  authorId: string,
+  content: string,
+  emotion: string | undefined,
+  media: MediaItem[] = [],
+  location?: PostLocation | null
+): Post {
   const id = `post-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   const now = Date.now()
 
   db.prepare(`
-    INSERT INTO posts (id, author_id, content, emotion, media, created_at)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run(id, authorId, content, emotion || null, JSON.stringify(media), now)
+    INSERT INTO posts (id, author_id, content, emotion, media, location, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(id, authorId, content, emotion || null, JSON.stringify(media), location ? JSON.stringify(location) : null, now)
 
   return {
     id,
@@ -151,6 +173,7 @@ export function createPost(authorId: string, content: string, emotion: string | 
     content,
     emotion,
     media,
+    location: location || undefined,
     created_at: now,
   }
 }
@@ -159,7 +182,8 @@ export function updatePost(
   id: string,
   content: string,
   emotion?: string,
-  media?: MediaItem[]
+  media?: MediaItem[],
+  location?: PostLocation | null
 ): Post | undefined {
   const existing = db.prepare('SELECT * FROM posts WHERE id = ?').get(id) as {
     id: string
@@ -167,6 +191,7 @@ export function updatePost(
     content: string
     emotion?: string
     media: string
+    location: string | null
     created_at: number
   } | undefined
 
@@ -185,18 +210,27 @@ export function updatePost(
     values.push(JSON.stringify(media))
   }
 
+  if (location !== undefined) {
+    updates.push('location = ?')
+    values.push(location ? JSON.stringify(location) : null)
+  }
+
   values.push(id)
 
   db.prepare(`UPDATE posts SET ${updates.join(', ')} WHERE id = ?`).run(...values)
 
+  const updatedAt = Date.now()
   return {
     id,
     author_id: existing.author_id,
     content,
     emotion: emotion !== undefined ? emotion : existing.emotion,
     media: media !== undefined ? media : JSON.parse(existing.media),
+    location: location !== undefined
+      ? location || undefined
+      : existing.location ? JSON.parse(existing.location) as PostLocation : undefined,
     created_at: existing.created_at,
-    updated_at: Date.now(),
+    updated_at: updatedAt,
   }
 }
 

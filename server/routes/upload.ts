@@ -1,12 +1,11 @@
 import { Router } from 'express'
 import multer from 'multer'
-import { join, dirname, extname } from 'path'
-import { fileURLToPath } from 'url'
+import { join, extname } from 'path'
 import { mkdirSync } from 'fs'
 import { v4 as uuidv4 } from 'uuid'
+import { UPLOADS_DIR } from '../db'
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const uploadsDir = join(__dirname, '..', '..', 'uploads')
+const uploadsDir = UPLOADS_DIR
 
 // Ensure upload directories exist
 const imagesDir = join(uploadsDir, 'images')

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Person, PostWithAuthor, MediaItem } from '../types'
+import { Person, PostWithAuthor, MediaItem, PostLocation } from '../types'
 import { getPersons, getTimeline, createPost, updatePost, uploadImage, uploadVideo } from '../api/client'
 import PostInput from '../components/PostInput'
 import Timeline from '../components/Timeline'
@@ -19,6 +19,12 @@ const emotions: Emotion[] = [
   { emoji: '💖', label: '想你', id: 'love' },
   { emoji: '🌙', label: '疲惫', id: 'tired' },
   { emoji: '🎉', label: '兴奋', id: 'excited' },
+  { emoji: '🥰', label: '幸福', id: 'blessed' },
+  { emoji: '✨', label: '期待', id: 'hopeful' },
+  { emoji: '😢', label: '难过', id: 'sad' },
+  { emoji: '🥺', label: '委屈', id: 'wronged' },
+  { emoji: '😠', label: '生气', id: 'angry' },
+  { emoji: '😴', label: '困倦', id: 'sleepy' },
 ]
 
 function TimelinePage() {
@@ -34,6 +40,7 @@ function TimelinePage() {
   const [editContent, setEditContent] = useState('')
   const [editMedia, setEditMedia] = useState<MediaItem[]>([])
   const [editEmotion, setEditEmotion] = useState<string>('')
+  const [editLocation, setEditLocation] = useState<PostLocation | null>(null)
 
   const currentPerson = persons.find(p => p.id === personId)
 
@@ -61,6 +68,7 @@ function TimelinePage() {
     setEditContent(post.content)
     setEditMedia([...post.media])
     setEditEmotion(post.emotion || '')
+    setEditLocation(post.location || null)
     setSelectedEmotion(post.emotion || '')
     // Scroll to top
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -71,17 +79,24 @@ function TimelinePage() {
     setEditContent('')
     setEditMedia([])
     setEditEmotion('')
+    setEditLocation(null)
     setSelectedEmotion('')
   }
 
-  async function handleSubmit(content: string, media: MediaItem[], emotion?: string) {
+  async function handleSubmit(
+    content: string,
+    media: MediaItem[],
+    emotion?: string,
+    location?: PostLocation | null
+  ) {
     if (!personId || (!content.trim() && media.length === 0)) return
 
     try {
       if (editingPost) {
         // Update existing post
-        await updatePost(editingPost.id, content.trim(), emotion, media)
+        await updatePost(editingPost.id, content.trim(), emotion, media, location)
         setEditingPost(null)
+        setEditLocation(null)
       } else {
         // Create new post
         await createPost({
@@ -89,11 +104,13 @@ function TimelinePage() {
           content: content.trim(),
           emotion,
           media,
+          location,
         })
       }
       setEditContent('')
       setEditMedia([])
       setEditEmotion('')
+      setEditLocation(null)
       setSelectedEmotion('')
       loadData()
     } catch (err) {
@@ -166,6 +183,7 @@ function TimelinePage() {
             initialContent={editContent}
             initialMedia={editMedia}
             initialEmotion={editEmotion}
+            initialLocation={editLocation}
             onContentChange={setEditContent}
             onMediaChange={setEditMedia}
             isEditing={!!editingPost}

@@ -7,6 +7,7 @@ import { existsSync } from 'fs'
 import personsRouter from './routes/persons.js'
 import postsRouter from './routes/posts.js'
 import uploadRouter from './routes/upload.js'
+import locationRouter from './routes/location.js'
 import { getTimeline, UPLOADS_DIR } from './db.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -34,6 +35,7 @@ if (existsSync(uploadsDir)) {
 app.use('/api/persons', personsRouter)
 app.use('/api/posts', postsRouter)
 app.use('/api/upload', uploadRouter)
+app.use('/api/location', locationRouter)
 
 // Timeline endpoint at /api/timeline
 app.get('/api/timeline', (_req, res) => {

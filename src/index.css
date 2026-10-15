@@ -784,6 +784,59 @@ button {
   color: var(--text-primary);
 }
 
+.location-button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.selected-location,
+.timeline-location {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  color: #93C5FD;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.selected-location {
+  margin: -2px 0 14px;
+  padding: 10px 12px;
+  background: rgba(29, 94, 255, 0.1);
+  border: 1px solid rgba(96, 165, 250, 0.2);
+  border-radius: 12px;
+}
+
+.selected-location-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.selected-location-icon {
+  flex-shrink: 0;
+}
+
+.remove-location-btn {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  margin: -3px -4px 0 0;
+  color: var(--text-muted);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.remove-location-btn:hover {
+  color: #FCA5A5;
+}
+
+.location-error {
+  margin: -4px 0 12px;
+  color: #FCA5A5;
+  font-size: 12px;
+}
+
 /* ==================== SUBMIT BUTTON ==================== */
 .submit-row {
   display: flex;
@@ -1251,10 +1304,19 @@ button {
   word-break: break-word;
 }
 
+.timeline-location {
+  margin-top: 8px;
+  color: #93C5FD;
+}
+
 @media (min-width: 481px) {
   .timeline-text {
     font-size: 15px;
     line-height: 1.7;
+  }
+
+  .timeline-location {
+    font-size: 13px;
   }
 }
 

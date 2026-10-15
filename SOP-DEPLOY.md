@@ -76,6 +76,8 @@ CMD ["node", "dist/server/index.js"]
 
 ### 2. docker-compose.yml (带 Traefik 标签和卷挂载)
 
+部署时在 `docker-compose.yml` 同目录的 `.env` 中配置 `AMAP_KEY`，Compose 会将其传入后端容器；不要将密钥提交到代码仓库。
+
 ```yaml
 services:
   lingling-lianlian:
@@ -91,6 +93,7 @@ services:
       - PORT=3456
       - DATA_DIR=/app/data
       - UPLOADS_DIR=/app/uploads
+      - AMAP_KEY=${AMAP_KEY}
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
