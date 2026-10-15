@@ -114,6 +114,7 @@ function HomePage() {
                 className="person-avatar"
                 style={{
                   background: PERSON_COLORS['person-b'].color,
+                  opacity: 0.8,
                   boxShadow: `0 0 30px ${PERSON_COLORS['person-b'].color}40`,
                 }}
               >
