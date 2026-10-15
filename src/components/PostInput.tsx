@@ -60,6 +60,7 @@ function PostInput({
   const [locationError, setLocationError] = useState('')
   const imageInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
+  const uploadCountRef = useRef(0)
 
   const isUploadingOrHasItems = isUploading || uploadingItems.length > 0
 
@@ -113,6 +114,7 @@ function PostInput({
   async function uploadMedia(file: File, type: 'image' | 'video') {
     const localUrl = createLocalPreview(file)
     const tempId = `uploading-${Date.now()}`
+    uploadCountRef.current++
 
     setUploadingItems(prev => [...prev, {
       id: tempId,
@@ -138,9 +140,14 @@ function PostInput({
       handleMediaChange([...media, item])
     } catch (err) {
       console.error('Upload failed:', err)
-      setUploadingItems(prev => prev.filter(i => i.id !== tempId))
+      setUploadingItems(prev => {
+        const item = prev.find(i => i.id === tempId)
+        if (item) URL.revokeObjectURL(item.localUrl)
+        return prev.filter(i => i.id !== tempId)
+      })
     } finally {
-      setIsUploading(uploadingItems.length > 1)
+      uploadCountRef.current--
+      setIsUploading(uploadCountRef.current > 0)
     }
   }
 
@@ -153,7 +160,11 @@ function PostInput({
   }
 
   function removeUploadingItem(id: string) {
-    setUploadingItems(prev => prev.filter(i => i.id !== id))
+    setUploadingItems(prev => {
+      const item = prev.find(i => i.id === id)
+      if (item) URL.revokeObjectURL(item.localUrl)
+      return prev.filter(i => i.id !== id)
+    })
   }
 
   function handleLocate() {
