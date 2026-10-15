@@ -1,9 +1,18 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root {
-  /* Primary Blue */
-  --primary: #1D5EFF;
-  --primary-glow: rgba(29, 94, 255, 0.4);
+  --primary: #7DD3FC;
+  --primary-hover: #38BDF8;
+  --primary-light: #BAE6FD;
+  --primary-focus: #BAE6FD;
+  --primary-contrast: #0C4A6E;
+  --primary-rgb: 125, 211, 252;
+  --primary-deep-rgb: 56, 189, 248;
+  --crystal-highlight: #F0FBFF;
+  --crystal-light: #BAE6FD;
+  --crystal-gradient: linear-gradient(135deg, var(--crystal-highlight) 0%, var(--crystal-light) 28%, var(--primary) 62%, var(--primary-hover) 100%);
+  --crystal-sheen: linear-gradient(115deg, transparent 20%, rgba(255, 255, 255, 0.58) 48%, rgba(255, 255, 255, 0.08) 58%, transparent 78%);
+  --primary-glow: rgba(var(--primary-rgb), 0.4);
 
   /* Secondary Green */
   --secondary: #10B981;
@@ -11,7 +20,7 @@
 
   /* Dark Theme */
   --bg-dark: #0a0e1a;
-  --bg-gradient: linear-gradient(135deg, #0a0e1a 0%, #111827 50%, #0f172a 100%);
+  --bg-gradient: radial-gradient(ellipse at 18% 18%, rgba(56, 189, 248, 0.07) 0%, transparent 38%), radial-gradient(ellipse at 82% 70%, rgba(125, 211, 252, 0.045) 0%, transparent 42%), linear-gradient(135deg, #0a0e1a 0%, #111827 50%, #0f172a 100%);
   --surface-glass: rgba(255, 255, 255, 0.05);
   --surface-glass-hover: rgba(255, 255, 255, 0.08);
   --border-glass: rgba(255, 255, 255, 0.1);
@@ -23,7 +32,7 @@
   --text-muted: rgba(255, 255, 255, 0.5);
 
   /* Shadows */
-  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 80px rgba(29, 94, 255, 0.1);
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 80px rgba(var(--primary-rgb), 0.1);
   --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.3);
 
   /* Radii */
@@ -37,6 +46,30 @@
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 14px;
   line-height: 1.6;
+}
+
+[data-theme="lingling"] {
+  --person-highlight: #ECFDF5;
+  --person-light: #A7F3D0;
+  --person-primary: #34D399;
+  --person-deep: #059669;
+  --person-contrast: #064E3B;
+  --person-rgb: 52, 211, 153;
+  --person-deep-rgb: 5, 150, 105;
+  --person-gradient: linear-gradient(135deg, var(--person-highlight) 0%, var(--person-light) 28%, var(--person-primary) 62%, var(--person-deep) 100%);
+  --person-glow: rgba(var(--person-rgb), 0.4);
+}
+
+[data-theme="lianlian"] {
+  --person-highlight: #FFF1F7;
+  --person-light: #FBCFE8;
+  --person-primary: #F9A8D4;
+  --person-deep: #F472B6;
+  --person-contrast: #831843;
+  --person-rgb: 249, 168, 212;
+  --person-deep-rgb: 244, 114, 182;
+  --person-gradient: linear-gradient(135deg, var(--person-highlight) 0%, var(--person-light) 28%, var(--person-primary) 62%, var(--person-deep) 100%);
+  --person-glow: rgba(var(--person-rgb), 0.4);
 }
 
 * {
@@ -80,15 +113,59 @@ button {
   position: absolute;
   width: 2px;
   height: 2px;
-  background: white;
+  background: #F0FBFF;
   border-radius: 50%;
-  opacity: 0.3;
-  animation: twinkle 3s ease-in-out infinite;
+  opacity: 0.34;
+  box-shadow: 0 0 5px 1px rgba(186, 230, 253, 0.45), 0 0 13px rgba(125, 211, 252, 0.22);
+  animation: twinkle 3.8s ease-in-out infinite, star-drift 12s ease-in-out infinite;
+}
+
+.star::before,
+.star::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: linear-gradient(transparent, rgba(240, 251, 255, 0.9), transparent);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.star::before {
+  width: 1px;
+  height: 9px;
+}
+
+.star::after {
+  width: 9px;
+  height: 1px;
+}
+
+.star:nth-child(5n) {
+  width: 3px;
+  height: 3px;
+  animation-duration: 5.2s, 16s;
+}
+
+.star:nth-child(7n) {
+  box-shadow: 0 0 7px 2px rgba(240, 251, 255, 0.58), 0 0 18px rgba(125, 211, 252, 0.32);
+  animation-duration: 4.6s, 14s;
 }
 
 @keyframes twinkle {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 0.8; }
+  0%, 100% { opacity: 0.22; }
+  50% { opacity: 0.72; }
+}
+
+@keyframes star-drift {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(3px, -5px, 0); }
+}
+
+@keyframes crystal-sweep {
+  0%, 68% { background-position: 150% 0; opacity: 0; }
+  75% { opacity: 0.72; }
+  100% { background-position: -150% 0; opacity: 0; }
 }
 
 @keyframes fadeIn {
@@ -99,6 +176,18 @@ button {
 @keyframes scaleIn {
   from { opacity: 0; transform: scale(0.9); }
   to { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .star,
+  .app-icon::before,
+  .hero-brand::before,
+  .submit-btn::before,
+  .emotion-pill.active::after,
+  .edit-save-btn::before,
+  .unlock-btn.confirm::before {
+    animation: none;
+  }
 }
 
 /* ==================== APP CONTAINER ==================== */
@@ -166,15 +255,18 @@ button {
 .app-icon {
   width: 36px;
   height: 36px;
-  background: linear-gradient(135deg, var(--primary) 0%, #3B82F6 100%);
+  background: var(--crystal-gradient);
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 12px;
   font-weight: 700;
-  color: #fff;
-  box-shadow: 0 0 20px var(--primary-glow);
+  color: var(--primary-contrast);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.9), inset 0 -3px 7px rgba(var(--primary-deep-rgb), 0.18), 0 0 20px var(--primary-glow);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.8);
 }
 
 @media (min-width: 481px) {
@@ -183,15 +275,16 @@ button {
     height: 40px;
     border-radius: 12px;
     font-size: 14px;
-    box-shadow: 0 0 24px var(--primary-glow);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.9), inset 0 -3px 7px rgba(var(--primary-deep-rgb), 0.18), 0 0 24px var(--primary-glow);
   }
 }
 
 .app-name {
   font-size: 14px;
   font-weight: 700;
-  color: var(--text-primary);
+  color: #BAE6FD;
   letter-spacing: -0.02em;
+  text-shadow: 0 0 14px rgba(125, 211, 252, 0.2);
 }
 
 @media (min-width: 481px) {
@@ -249,14 +342,15 @@ button {
   justify-content: center;
   width: 56px;
   height: 56px;
-  background: linear-gradient(135deg, var(--primary) 0%, #60A5FA 100%);
+  background: var(--crystal-gradient);
   border-radius: 18px;
   margin-bottom: 20px;
   font-size: 22px;
   font-weight: 800;
-  color: #fff;
-  box-shadow: 0 0 40px var(--primary-glow);
+  color: var(--primary-contrast);
+  box-shadow: inset 0 2px 2px rgba(255, 255, 255, 0.9), inset 0 -5px 10px rgba(var(--primary-deep-rgb), 0.2), 0 0 40px var(--primary-glow);
   position: relative;
+  border: 1px solid rgba(240, 251, 255, 0.85);
 }
 
 @media (min-width: 481px) {
@@ -274,17 +368,38 @@ button {
   position: absolute;
   inset: -4px;
   border-radius: 22px;
-  background: linear-gradient(135deg, var(--primary), transparent);
-  opacity: 0.3;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.65), rgba(var(--primary-rgb), 0.12), transparent 72%);
+  opacity: 0.55;
   z-index: -1;
+}
+
+.app-icon::before,
+.hero-brand::before,
+.submit-btn::before,
+.edit-save-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--crystal-sheen);
+  background-size: 250% 100%;
+  background-position: 150% 0;
+  pointer-events: none;
+  animation: crystal-sweep 8s ease-in-out infinite;
+}
+
+.app-icon::before,
+.hero-brand::before {
+  animation-duration: 9s;
 }
 
 .hero-title {
   font-size: 24px;
   font-weight: 800;
-  color: var(--text-primary);
+  color: #BAE6FD;
   letter-spacing: -0.03em;
   margin-bottom: 10px;
+  text-shadow: 0 0 22px rgba(125, 211, 252, 0.2);
 }
 
 @media (min-width: 481px) {
@@ -296,7 +411,7 @@ button {
 
 .hero-subtitle {
   font-size: 14px;
-  color: var(--text-secondary);
+  color: rgba(186, 230, 253, 0.82);
   line-height: 1.6;
   margin-bottom: 32px;
 }
@@ -336,6 +451,11 @@ button {
   transition: all 0.3s var(--ease-out);
 }
 
+.person-card[data-theme] {
+  border-color: rgba(var(--person-rgb), 0.24);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 0 22px rgba(var(--person-rgb), 0.055);
+}
+
 @media (min-width: 481px) {
   .person-card {
     gap: 12px;
@@ -345,7 +465,8 @@ button {
 
 .person-card:hover {
   background: var(--surface-glass-hover);
-  border-color: var(--border-glass-hover);
+  border-color: rgba(var(--person-rgb), 0.56);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 0 28px rgba(var(--person-rgb), 0.12);
   transform: translateY(-2px);
 }
 
@@ -374,14 +495,24 @@ button {
   }
 }
 
-.person-avatar.blue {
-  background: linear-gradient(135deg, #1D5EFF 0%, #60A5FA 100%);
-  box-shadow: 0 0 30px var(--primary-glow);
+[data-theme] .person-avatar {
+  background: var(--person-gradient);
+  color: var(--person-contrast);
+  box-shadow: inset 0 2px 2px rgba(255, 255, 255, 0.85), inset 0 -5px 10px rgba(var(--person-deep-rgb), 0.22), 0 0 30px var(--person-glow);
+  border: 1px solid rgba(255, 255, 255, 0.8);
 }
 
-.person-avatar.green {
-  background: linear-gradient(135deg, #10B981 0%, #34D399 100%);
-  box-shadow: 0 0 30px var(--secondary-glow);
+[data-theme] .timeline-avatar {
+  background: var(--person-gradient) !important;
+  color: var(--person-contrast);
+  border: 2px solid rgba(255, 255, 255, 0.75);
+  box-shadow: inset 0 2px 2px rgba(255, 255, 255, 0.85), inset 0 -4px 8px rgba(var(--person-deep-rgb), 0.24), 0 0 18px rgba(var(--person-rgb), 0.3);
+}
+
+.person-card[data-theme] .person-name,
+.timeline-item[data-theme] .timeline-author {
+  color: var(--person-light);
+  text-shadow: 0 0 12px rgba(var(--person-rgb), 0.24);
 }
 
 .person-avatar::after {
@@ -477,13 +608,15 @@ button {
 
 .back-btn:hover {
   background: var(--surface-glass-hover);
-  border-color: var(--border-glass-hover);
+  border-color: var(--primary-focus);
+  box-shadow: 0 0 16px rgba(var(--primary-rgb), 0.16);
 }
 
 .timeline-page-title {
   font-size: 16px;
   font-weight: 700;
-  color: var(--text-primary);
+  color: var(--person-light);
+  text-shadow: 0 0 14px rgba(var(--person-rgb), 0.2);
 }
 
 @media (min-width: 481px) {
@@ -497,10 +630,11 @@ button {
   background: var(--surface-glass);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border: 1px solid var(--border-glass);
+  border: 1px solid rgba(var(--primary-rgb), 0.24);
   border-radius: 20px;
   padding: 16px;
   margin-bottom: 16px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 0 24px rgba(var(--primary-rgb), 0.055);
 }
 
 @media (min-width: 481px) {
@@ -542,7 +676,10 @@ button {
   justify-content: center;
   font-size: 16px;
   font-weight: 700;
-  color: #fff;
+  background: var(--person-gradient);
+  color: var(--person-contrast);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.85), inset 0 -4px 8px rgba(var(--person-deep-rgb), 0.2), 0 0 20px rgba(var(--person-rgb), 0.3);
   flex-shrink: 0;
 }
 
@@ -570,6 +707,7 @@ button {
 .card-header-title {
   font-size: 15px;
   font-weight: 700;
+  color: var(--person-light);
   color: var(--text-primary);
   margin-bottom: 2px;
 }
@@ -588,6 +726,7 @@ button {
 
 .card-header-subtitle {
   font-size: 12px;
+  color: rgba(var(--person-rgb), 0.8);
   color: var(--text-muted);
 }
 
@@ -631,8 +770,9 @@ button {
 
 .input-field:focus {
   outline: none;
-  border-color: var(--primary);
-  background: rgba(29, 94, 255, 0.1);
+  border-color: var(--person-light);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.07), rgba(var(--person-rgb), 0.035));
+  box-shadow: inset 0 1px 8px rgba(var(--person-rgb), 0.06), 0 0 0 3px rgba(var(--person-rgb), 0.08), 0 0 18px rgba(var(--person-rgb), 0.12);
 }
 
 /* ==================== EMOTION SELECTOR ==================== */
@@ -705,14 +845,31 @@ button {
 }
 
 .emotion-pill:hover {
-  border-color: var(--primary);
+  border-color: var(--person-deep);
   color: var(--text-primary);
 }
 
 .emotion-pill.active {
-  background: rgba(29, 94, 255, 0.2);
-  border-color: var(--primary);
-  color: #60A5FA;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 18% 0%, rgba(255, 255, 255, 0.3), transparent 58%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.22) 0%, rgba(var(--person-rgb), 0.18) 28%, rgba(var(--person-rgb), 0.2) 62%, rgba(var(--person-deep-rgb), 0.16) 100%);
+  border-color: rgba(255, 255, 255, 0.62);
+  color: var(--person-light);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.42), inset 0 -2px 6px rgba(var(--person-deep-rgb), 0.16), 0 0 16px rgba(var(--person-rgb), 0.18);
+}
+
+.emotion-pill.active::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--crystal-sheen);
+  background-size: 250% 100%;
+  background-position: 150% 0;
+  pointer-events: none;
+  animation: crystal-sweep 8s ease-in-out infinite;
 }
 
 .emotion-pill .emoji {
@@ -794,7 +951,7 @@ button {
   display: flex;
   align-items: flex-start;
   gap: 7px;
-  color: #93C5FD;
+  color: var(--person-light);
   font-size: 12px;
   line-height: 1.5;
   overflow-wrap: anywhere;
@@ -803,9 +960,10 @@ button {
 .selected-location {
   margin: -2px 0 14px;
   padding: 10px 12px;
-  background: rgba(29, 94, 255, 0.1);
-  border: 1px solid rgba(96, 165, 250, 0.2);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(var(--person-rgb), 0.045), rgba(var(--person-deep-rgb), 0.025));
+  border: 1px solid rgba(var(--person-rgb), 0.32);
   border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 0 18px rgba(var(--person-rgb), 0.06);
 }
 
 .selected-location-text {
@@ -851,18 +1009,24 @@ button {
 
 .submit-btn {
   flex: 1;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   padding: 14px 20px;
-  background: linear-gradient(135deg, var(--primary) 0%, #3B82F6 100%);
-  color: #fff;
+  background:
+    radial-gradient(ellipse at 18% 0%, rgba(255, 255, 255, 0.65), transparent 52%),
+    var(--person-gradient);
+  color: var(--person-contrast);
   border-radius: var(--radius-full);
   font-size: 14px;
   font-weight: 600;
   transition: all 0.2s var(--ease-out);
-  box-shadow: 0 4px 20px var(--primary-glow);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.95), inset 0 -4px 8px rgba(var(--person-deep-rgb), 0.22), 0 4px 20px rgba(var(--person-rgb), 0.28), 0 0 30px rgba(var(--person-rgb), 0.18);
   min-height: 52px;
   touch-action: manipulation;
 }
@@ -883,8 +1047,11 @@ button {
 }
 
 .submit-btn:hover {
+  background:
+    radial-gradient(ellipse at 18% 0%, rgba(255, 255, 255, 0.76), transparent 52%),
+    var(--person-gradient);
   transform: translateY(-1px);
-  box-shadow: 0 8px 30px var(--primary-glow);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.98), inset 0 -4px 8px rgba(var(--person-deep-rgb), 0.2), 0 8px 30px rgba(var(--person-rgb), 0.34), 0 0 36px rgba(var(--person-rgb), 0.24);
 }
 
 .submit-btn:active {
@@ -1055,10 +1222,10 @@ button {
   align-items: center;
   gap: 4px;
   padding: 4px 10px;
-  background: rgba(29, 94, 255, 0.15);
+  background: rgba(var(--person-rgb), 0.15);
   border-radius: 20px;
   font-size: 12px;
-  color: #60A5FA;
+  color: var(--person-light);
   margin-top: 8px;
 }
 
@@ -1137,7 +1304,9 @@ button {
 
 .edit-textarea:focus {
   outline: none;
-  border-color: var(--primary);
+  border-color: var(--person-light);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.07), rgba(var(--person-rgb), 0.035));
+  box-shadow: inset 0 1px 8px rgba(var(--person-rgb), 0.06), 0 0 0 3px rgba(var(--person-rgb), 0.08), 0 0 18px rgba(var(--person-rgb), 0.12);
 }
 
 .edit-actions {
@@ -1163,16 +1332,22 @@ button {
 
 .edit-save-btn {
   padding: 8px 16px;
-  background: var(--primary);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--person-gradient);
   border-radius: 8px;
-  color: #fff;
+  color: var(--person-contrast);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.82), inset 0 -3px 6px rgba(var(--person-deep-rgb), 0.18), 0 0 18px rgba(var(--person-rgb), 0.16);
   font-size: 13px;
   font-weight: 500;
   transition: all 0.15s var(--ease-out);
 }
 
 .edit-save-btn:hover {
-  background: #1652F0;
+  background: var(--person-gradient);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.95), inset 0 -3px 6px rgba(var(--person-deep-rgb), 0.16), 0 0 22px rgba(var(--person-rgb), 0.26);
 }
 
 /* ==================== DELETE CONFIRM ==================== */
@@ -1282,6 +1457,11 @@ button {
   position: relative;
 }
 
+.timeline-item[data-theme] .timeline-card {
+  border-color: rgba(var(--person-rgb), 0.24);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 0 20px rgba(var(--person-rgb), 0.055);
+}
+
 @media (min-width: 481px) {
   .timeline-card {
     border-radius: 20px;
@@ -1306,7 +1486,7 @@ button {
 
 .timeline-location {
   margin-top: 8px;
-  color: #93C5FD;
+  color: var(--person-light);
 }
 
 @media (min-width: 481px) {
@@ -1604,7 +1784,7 @@ button {
 
 /* Uploading state */
 .media-preview-item.uploading {
-  background: rgba(29, 94, 255, 0.1);
+  background: rgba(var(--person-rgb), 0.1);
 }
 
 .media-preview-overlay {
@@ -1633,7 +1813,7 @@ button {
 }
 
 .progress-ring-fill {
-  stroke: #60A5FA;
+  stroke: var(--person-primary);
   stroke-linecap: round;
   transition: stroke-dasharray 0.2s ease;
 }
@@ -1697,7 +1877,10 @@ button {
   justify-content: center;
   font-size: 18px;
   font-weight: 600;
-  color: #fff;
+  background: var(--person-gradient);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: inset 0 2px 2px rgba(255, 255, 255, 0.85), inset 0 -4px 8px rgba(var(--person-deep-rgb), 0.2), 0 0 40px var(--person-glow);
+  color: var(--person-contrast);
   margin: 0 auto 14px;
 }
 
@@ -1713,9 +1896,10 @@ button {
 .unlock-name {
   font-size: 16px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--person-light);
   margin-bottom: 4px;
   letter-spacing: -0.01em;
+  text-shadow: 0 0 12px rgba(var(--person-rgb), 0.2);
 }
 
 @media (min-width: 481px) {
@@ -1754,8 +1938,9 @@ button {
 }
 
 .unlock-input-wrapper.focused {
-  border-color: rgba(255, 255, 255, 0.3);
-  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--person-light);
+  background: rgba(var(--person-rgb), 0.05);
+  box-shadow: 0 0 0 2px rgba(var(--person-rgb), 0.08), 0 0 18px rgba(var(--person-rgb), 0.1);
 }
 
 .unlock-input-wrapper.error {
@@ -1856,8 +2041,25 @@ button {
 }
 
 .unlock-btn.confirm {
-  color: #fff;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--person-gradient);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.9), inset 0 -3px 6px rgba(var(--person-deep-rgb), 0.18), 0 0 18px rgba(var(--person-rgb), 0.2);
+  color: var(--person-contrast);
+}
+
+.unlock-btn.confirm::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--crystal-sheen);
+  background-size: 250% 100%;
+  background-position: 150% 0;
+  pointer-events: none;
+  animation: crystal-sweep 8s ease-in-out infinite;
 }
 
 .unlock-btn.confirm:hover {
@@ -1907,4 +2109,5 @@ button {
 
 .footer-link:hover {
   opacity: 1;
+  color: var(--primary-hover);
 }

@@ -132,7 +132,7 @@ function TimelinePage() {
 
   if (loading) {
     return (
-      <div className="app-container">
+      <div className="app-container" data-theme={personId === 'person-b' ? 'lianlian' : 'lingling'}>
         <div className="loading-container">
           <div className="loading-spinner" />
         </div>
@@ -141,7 +141,7 @@ function TimelinePage() {
   }
 
   return (
-    <div className="app-container">
+    <div className="app-container" data-theme={personId === 'person-b' ? 'lianlian' : 'lingling'}>
       <header className="timeline-page-header">
         <button className="back-btn" onClick={() => navigate('/')}>
           ←
@@ -156,9 +156,6 @@ function TimelinePage() {
           <div className="card-header">
             <div
               className="card-avatar"
-              style={{
-                background: `linear-gradient(135deg, ${currentPerson.avatar_color} 0%, ${currentPerson.avatar_color}aa 100%)`
-              }}
             >
               {currentPerson.name.charAt(0)}
             </div>

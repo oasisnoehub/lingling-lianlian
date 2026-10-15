@@ -41,10 +41,8 @@ function HomePage() {
     }
   }
 
-  const personColor = selectedPerson === 'person-a' ? '#4f8ef7' : '#2ACFEE'
-
   return (
-    <div className="app-container">
+    <div className="app-container" data-theme={selectedPerson === 'person-b' ? 'lianlian' : 'lingling'}>
       {/* Star Background */}
       <div className="stars-bg">
         {Array.from({ length: 50 }).map((_, i) => (
@@ -79,16 +77,18 @@ function HomePage() {
           <div className="person-cards">
             <div
               className="person-card"
+              data-theme="lingling"
               onClick={() => handlePersonClick('person-a')}
             >
-              <div className="person-avatar blue">L</div>
+              <div className="person-avatar">L</div>
               <span className="person-name">Lingling</span>
             </div>
             <div
               className="person-card"
+              data-theme="lianlian"
               onClick={() => handlePersonClick('person-b')}
             >
-              <div className="person-avatar green">L</div>
+              <div className="person-avatar">L</div>
               <span className="person-name">Lianlian</span>
             </div>
           </div>
@@ -105,13 +105,7 @@ function HomePage() {
         <div className="unlock-modal-overlay" onClick={() => setShowPasswordModal(false)}>
           <div className="unlock-modal" onClick={e => e.stopPropagation()}>
             {/* Avatar Circle */}
-            <div
-              className="unlock-avatar"
-              style={{
-                background: `linear-gradient(135deg, ${personColor} 0%, ${personColor}88 100%)`,
-                boxShadow: `0 0 40px ${personColor}40`,
-              }}
-            >
+            <div className="unlock-avatar">
               {selectedPerson === 'person-a' ? 'L' : 'l'}
             </div>
 
@@ -156,9 +150,6 @@ function HomePage() {
               </button>
               <button
                 className="unlock-btn confirm"
-                style={{
-                  background: `linear-gradient(135deg, ${personColor} 0%, ${personColor}cc 100%)`,
-                }}
                 onClick={handlePasswordSubmit}
               >
                 解锁

@@ -71,10 +71,13 @@ function Timeline({ posts, onEditPost, onPostsChange }: TimelineProps) {
             : 'double'
 
           return (
-            <div key={post.id} className="timeline-item">
+            <div
+              key={post.id}
+              className="timeline-item"
+              data-theme={post.author_id === 'person-b' ? 'lianlian' : 'lingling'}
+            >
               <div
                 className="timeline-avatar"
-                style={{ background: `linear-gradient(135deg, ${post.author.avatar_color} 0%, ${post.author.avatar_color}99 100%)` }}
               >
                 {post.author.name.charAt(0)}
               </div>
