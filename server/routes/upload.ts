@@ -3,7 +3,7 @@ import multer from 'multer'
 import { join, extname } from 'path'
 import { mkdirSync } from 'fs'
 import { v4 as uuidv4 } from 'uuid'
-import { UPLOADS_DIR } from '../db'
+import { UPLOADS_DIR } from '../db.js'
 
 const uploadsDir = UPLOADS_DIR
 

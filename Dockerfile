@@ -47,10 +47,9 @@ COPY --from=builder /app/dist ./dist
 
 # Copy compiled server from server-builder
 COPY --from=server-builder /app/dist/server ./dist/server
-COPY --from=builder /app/uploads ./uploads
 
-# Create data directory for SQLite database
-RUN mkdir -p /app/data
+# Create runtime directories (both are backed by Docker volumes)
+RUN mkdir -p /app/data /app/uploads
 
 ENV NODE_ENV=production
 ENV PORT=3456

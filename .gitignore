@@ -1,3 +1,21 @@
-data/*.db-wal
-data/*.db-shm
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Secrets — never commit; copy .env.example to .env and fill it in
+.env
+
+# Runtime data (persisted via Docker volumes, not via git)
+data/
 uploads/
+
+# Stray files
+tClear-Host
+
+# Editor / OS noise
+.DS_Store
+.vscode/
+.idea/
+*.log

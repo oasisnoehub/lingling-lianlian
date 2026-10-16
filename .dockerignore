@@ -1,0 +1,27 @@
+# Dependencies — must never leak into the build context,
+# otherwise `COPY . .` overwrites the npm ci install with the host's
+# platform-specific binaries (e.g. darwin-arm64) and the image breaks.
+node_modules
+
+# Build output — rebuilt inside the image
+dist
+
+# Runtime data — provided by Docker volumes at runtime
+data
+uploads
+
+# Secrets — injected via docker-compose environment / --env-file
+.env
+
+# VCS
+.git
+.gitignore
+
+# Editor / OS noise
+.vscode
+.idea
+.DS_Store
+
+# Stray files
+tClear-Host
+*.log
