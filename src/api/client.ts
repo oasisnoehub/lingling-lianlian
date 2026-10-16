@@ -1,34 +1,124 @@
 import { Person, Post, PostWithAuthor, MediaItem, PostLocation } from '../types'
 
 const API_BASE = '/api'
+const TOKEN_KEY = 'linglinglianlian.token'
 
-async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${url}`, {
-    ...options,
-    headers: {
-      ...options?.headers,
-    },
-  })
-  if (!res.ok) {
-    throw new Error(`API Error: ${res.status} ${res.statusText}`)
+/** An error whose message is safe (and useful) to show to the user. */
+export class ApiError extends Error {
+  readonly status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
   }
-  return res.json()
 }
 
-export async function getPersons(): Promise<Person[]> {
-  return fetchJson<Person[]>('/persons')
+export function getToken(): string | null {
+  try {
+    return localStorage.getItem(TOKEN_KEY)
+  } catch {
+    return null
+  }
+}
+
+export function setToken(token: string | null): void {
+  try {
+    if (token) localStorage.setItem(TOKEN_KEY, token)
+    else localStorage.removeItem(TOKEN_KEY)
+  } catch {
+    /* localStorage unavailable (private mode); the session just won't persist */
+  }
+}
+
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const headers = new Headers(options.headers)
+  const token = getToken()
+  if (token) headers.set('Authorization', 'Bearer ' + token)
+  if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
+  }
+
+  let response: Response
+  try {
+    response = await fetch(API_BASE + path, { ...options, headers })
+  } catch {
+    throw new ApiError('网络连接失败，请检查网络后重试', 0)
+  }
+
+  if (response.status === 204) return undefined as T
+
+  const text = await response.text()
+  let payload: unknown = null
+  if (text) {
+    try {
+      payload = JSON.parse(text)
+    } catch {
+      payload = null
+    }
+  }
+
+  if (!response.ok) {
+    const serverMessage = (payload as { error?: string } | null)?.error
+    throw new ApiError(serverMessage || '请求失败（' + response.status + '）', response.status)
+  }
+
+  return payload as T
+}
+
+export interface LoginResult {
+  token: string
+  person: Person
+}
+
+export async function login(personId: string, password: string): Promise<LoginResult> {
+  const result = await request<LoginResult>('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ personId, password }),
+  })
+  setToken(result.token)
+  return result
+}
+
+export async function logout(): Promise<void> {
+  setToken(null)
+}
+
+export async function getMe(): Promise<Person> {
+  const result = await request<{ person: Person }>('/auth/me')
+  return result.person
 }
 
 export async function getTimeline(): Promise<PostWithAuthor[]> {
-  return fetchJson<PostWithAuthor[]>('/timeline')
+  return request<PostWithAuthor[]>('/timeline')
 }
 
 export interface CreatePostData {
-  author_id: string
   content: string
   emotion?: string
   media?: MediaItem[]
   location?: PostLocation | null
+}
+
+export async function createPost(data: CreatePostData): Promise<Post> {
+  return request<Post>('/posts', { method: 'POST', body: JSON.stringify(data) })
+}
+
+export async function updatePost(
+  id: string,
+  content: string,
+  emotion?: string,
+  media?: MediaItem[],
+  location?: PostLocation | null,
+): Promise<Post> {
+  return request<Post>('/posts/' + id, {
+    method: 'PUT',
+    body: JSON.stringify({ content, emotion, media, location }),
+  })
+}
+
+export async function deletePost(id: string): Promise<void> {
+  await request<void>('/posts/' + id, { method: 'DELETE' })
 }
 
 export interface ReverseLocationResult {
@@ -39,72 +129,75 @@ export interface ReverseLocationResult {
 }
 
 export async function reverseLocation(latitude: number, longitude: number): Promise<ReverseLocationResult> {
-  const query = new URLSearchParams({
-    latitude: String(latitude),
-    longitude: String(longitude),
+  const query = new URLSearchParams({ latitude: String(latitude), longitude: String(longitude) })
+  return request<ReverseLocationResult>('/location/reverse?' + query.toString())
+}
+
+export interface UploadTask {
+  promise: Promise<MediaItem>
+  /** Cancels the in-flight request; the promise rejects with an aborted error. */
+  abort: () => void
+}
+
+/**
+ * fetch() cannot report upload progress, so multipart uploads go through XHR.
+ * It also gives us a real abort() for when the user cancels mid-upload.
+ */
+function uploadFile(path: string, file: File, onProgress?: (percent: number) => void): UploadTask {
+  const xhr = new XMLHttpRequest()
+  let aborted = false
+
+  const promise = new Promise<MediaItem>((resolve, reject) => {
+    xhr.open('POST', API_BASE + path)
+    const token = getToken()
+    if (token) xhr.setRequestHeader('Authorization', 'Bearer ' + token)
+
+    xhr.upload.onprogress = event => {
+      if (event.lengthComputable) {
+        onProgress?.(Math.round((event.loaded / event.total) * 100))
+      }
+    }
+
+    xhr.onload = () => {
+      let payload: unknown = null
+      try {
+        payload = JSON.parse(xhr.responseText)
+      } catch {
+        payload = null
+      }
+
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(payload as MediaItem)
+        return
+      }
+
+      const serverMessage = (payload as { error?: string } | null)?.error
+      reject(new ApiError(serverMessage || '上传失败（' + xhr.status + '）', xhr.status))
+    }
+
+    xhr.onerror = () => reject(new ApiError('上传失败，请检查网络后重试', 0))
+    xhr.onabort = () => reject(new ApiError('上传已取消', 0))
+
+    const form = new FormData()
+    form.append('file', file)
+    xhr.send(form)
+
+    if (aborted) xhr.abort()
   })
-  const res = await fetch(`${API_BASE}/location/reverse?${query}`)
-  let result: ReverseLocationResult & { error?: string }
-  try {
-    result = await res.json() as ReverseLocationResult & { error?: string }
-  } catch {
-    throw new Error('定位服务响应异常，请稍后重试')
+
+  return {
+    promise,
+    abort: () => {
+      aborted = true
+      xhr.abort()
+    },
   }
-
-  if (!res.ok) {
-    throw new Error(result.error || '地址获取失败，请稍后重试')
-  }
-  return result
 }
 
-export async function createPost(data: CreatePostData): Promise<Post> {
-  return fetchJson<Post>('/posts', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  })
+export function uploadImage(file: File, onProgress?: (percent: number) => void): UploadTask {
+  return uploadFile('/upload/image', file, onProgress)
 }
 
-export async function updatePost(
-  id: string,
-  content: string,
-  emotion?: string,
-  media?: MediaItem[],
-  location?: PostLocation | null
-): Promise<Post> {
-  return fetchJson<Post>(`/posts/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content, emotion, media, location }),
-  })
-}
-
-export async function deletePost(id: string): Promise<void> {
-  await fetch(`${API_BASE}/posts/${id}`, { method: 'DELETE' })
-}
-
-export async function uploadImage(file: File): Promise<MediaItem> {
-  const formData = new FormData()
-  formData.append('file', file)
-  const res = await fetch(`${API_BASE}/upload/image`, {
-    method: 'POST',
-    body: formData,
-  })
-  if (!res.ok) {
-    throw new Error(`Upload failed: ${res.status}`)
-  }
-  return res.json()
-}
-
-export async function uploadVideo(file: File): Promise<MediaItem> {
-  const formData = new FormData()
-  formData.append('file', file)
-  const res = await fetch(`${API_BASE}/upload/video`, {
-    method: 'POST',
-    body: formData,
-  })
-  if (!res.ok) {
-    throw new Error(`Upload failed: ${res.status}`)
-  }
-  return res.json()
+export function uploadVideo(file: File, onProgress?: (percent: number) => void): UploadTask {
+  return uploadFile('/upload/video', file, onProgress)
 }

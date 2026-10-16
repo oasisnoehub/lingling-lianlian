@@ -1,82 +1,104 @@
-import { Router } from 'express'
+import { Router, type NextFunction, type Request, type Response } from 'express'
 import multer from 'multer'
-import { join, extname } from 'path'
 import { mkdirSync } from 'fs'
 import { v4 as uuidv4 } from 'uuid'
 import { UPLOADS_DIR } from '../db.js'
+import { createRateLimiter } from '../auth.js'
 
 const uploadsDir = UPLOADS_DIR
+mkdirSync(uploadsDir, { recursive: true })
 
-// Ensure upload directories exist
-const imagesDir = join(uploadsDir, 'images')
-const videosDir = join(uploadsDir, 'videos')
-const thumbnailsDir = join(uploadsDir, 'thumbnails')
-;[imagesDir, videosDir, thumbnailsDir].forEach(dir => {
-  mkdirSync(dir, { recursive: true })
-})
+const MAX_FILE_SIZE = 100 * 1024 * 1024
 
-// Configure multer storage
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, uploadsDir)
-  },
-  filename: (_req, file, cb) => {
-    const uniqueName = `${uuidv4()}${extname(file.originalname)}`
-    cb(null, uniqueName)
-  },
-})
+/**
+ * The stored extension is derived from the MIME type, never from the
+ * client-supplied filename. Anything off these lists is rejected, so an
+ * uploaded file can never be served back as .html / .svg and execute script
+ * on our own origin.
+ */
+const IMAGE_TYPES: Record<string, string> = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+  'image/gif': '.gif',
+  'image/avif': '.avif',
+  'image/heic': '.heic',
+  'image/heif': '.heif',
+  'image/heic-sequence': '.heic',
+  'image/heif-sequence': '.heif',
+}
 
-const upload = multer({
-  storage,
-  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB limit
-})
+const VIDEO_TYPES: Record<string, string> = {
+  'video/mp4': '.mp4',
+  'video/quicktime': '.mov',
+  'video/webm': '.webm',
+  'video/x-matroska': '.mkv',
+}
+
+type SingleFileMiddleware = (req: Request, res: Response, next: (err?: unknown) => void) => void
+
+function makeUploader(types: Record<string, string>, label: string): SingleFileMiddleware {
+  return multer({
+    limits: { fileSize: MAX_FILE_SIZE, files: 1 },
+    storage: multer.diskStorage({
+      destination: (_req, _file, cb) => cb(null, uploadsDir),
+      filename: (_req, file, cb) => {
+        cb(null, uuidv4() + (types[file.mimetype] ?? ''))
+      },
+    }),
+    fileFilter: (_req, file, cb) => {
+      if (!types[file.mimetype]) {
+        cb(new multer.MulterError('LIMIT_UNEXPECTED_FILE', label))
+        return
+      }
+      cb(null, true)
+    },
+  }).single('file')
+}
+
+const imageUpload = makeUploader(IMAGE_TYPES, 'image')
+const videoUpload = makeUploader(VIDEO_TYPES, 'video')
+
+const uploadLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 60 })
+
+function describeUploadError(err: unknown, label: string): { status: number; message: string } {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return { status: 413, message: '文件太大，单个文件不能超过 100MB' }
+    }
+    return { status: 400, message: '不支持的文件格式，请上传' + label + '文件' }
+  }
+  return { status: 500, message: '上传失败，请稍后重试' }
+}
+
+function handleUpload(upload: SingleFileMiddleware, label: string, type: 'image' | 'video') {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    upload(req, res, (err?: unknown) => {
+      if (err) {
+        const { status, message } = describeUploadError(err, label)
+        res.status(status).json({ error: message })
+        return
+      }
+
+      if (!req.file) {
+        res.status(400).json({ error: '没有收到文件' })
+        return
+      }
+
+      res.status(201).json({
+        id: 'media-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+        type,
+        url: '/uploads/' + req.file.filename,
+      })
+    })
+
+    void next
+  }
+}
 
 const router = Router()
 
-interface MediaItem {
-  id: string
-  type: 'image' | 'video'
-  url: string
-  thumbnail_url?: string
-}
-
-router.post('/image', upload.single('file'), (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' })
-    }
-
-    const item: MediaItem = {
-      id: `media-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      type: 'image',
-      url: `/uploads/${req.file.filename}`,
-    }
-
-    res.status(201).json(item)
-  } catch (err) {
-    console.error('Error uploading image:', err)
-    res.status(500).json({ error: 'Failed to upload image' })
-  }
-})
-
-router.post('/video', upload.single('file'), (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' })
-    }
-
-    const item: MediaItem = {
-      id: `media-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      type: 'video',
-      url: `/uploads/${req.file.filename}`,
-      thumbnail_url: undefined, // Could generate thumbnail with ffmpeg if available
-    }
-
-    res.status(201).json(item)
-  } catch (err) {
-    console.error('Error uploading video:', err)
-    res.status(500).json({ error: 'Failed to upload video' })
-  }
-})
+router.post('/image', uploadLimiter, handleUpload(imageUpload, '图片', 'image'))
+router.post('/video', uploadLimiter, handleUpload(videoUpload, '视频', 'video'))
 
 export default router

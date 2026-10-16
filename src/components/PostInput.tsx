@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Person, MediaItem, PostLocation } from '../types'
 import imageCompression from 'browser-image-compression'
-import { reverseLocation } from '../api/client'
+import { reverseLocation, type UploadTask } from '../api/client'
+import { showToast } from './Toaster'
 
 interface Emotion {
   emoji: string
@@ -21,9 +22,15 @@ interface PostInputProps {
   emotions: Emotion[]
   selectedEmotion: string
   onSelectEmotion: (id: string) => void
-  onSubmit: (content: string, media: MediaItem[], emotion?: string, location?: PostLocation | null) => void
-  onImageUpload: (file: File, onProgress?: (p: number) => void) => Promise<MediaItem>
-  onVideoUpload: (file: File, onProgress?: (p: number) => void) => Promise<MediaItem>
+  /** Resolves true when the post was actually saved, so we know whether to clear. */
+  onSubmit: (
+    content: string,
+    media: MediaItem[],
+    emotion?: string,
+    location?: PostLocation | null,
+  ) => Promise<boolean>
+  onImageUpload: (file: File, onProgress?: (p: number) => void) => UploadTask
+  onVideoUpload: (file: File, onProgress?: (p: number) => void) => UploadTask
   initialContent?: string
   initialMedia?: MediaItem[]
   initialEmotion?: string
@@ -54,15 +61,17 @@ function PostInput({
   const [content, setContent] = useState(initialContent)
   const [media, setMedia] = useState<MediaItem[]>(initialMedia)
   const [uploadingItems, setUploadingItems] = useState<UploadingItem[]>([])
-  const [isUploading, setIsUploading] = useState(false)
   const [location, setLocation] = useState<PostLocation | null>(initialLocation)
   const [isLocating, setIsLocating] = useState(false)
   const [locationError, setLocationError] = useState('')
   const imageInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
-  const uploadCountRef = useRef(0)
+  const abortsRef = useRef(new Map<string, () => void>())
+  const localUrlsRef = useRef(new Set<string>())
 
-  const isUploadingOrHasItems = isUploading || uploadingItems.length > 0
+  // Derived from the list itself so removing an in-flight item can never leave
+  // the form permanently disabled.
+  const isUploading = uploadingItems.length > 0
 
   useEffect(() => {
     setContent(initialContent)
@@ -70,6 +79,14 @@ function PostInput({
     setLocation(initialLocation)
     setLocationError('')
   }, [initialContent, initialMedia, initialLocation])
+
+  useEffect(() => {
+    return () => {
+      for (const abort of abortsRef.current.values()) abort()
+      for (const url of localUrlsRef.current) URL.revokeObjectURL(url)
+      localUrlsRef.current.clear()
+    }
+  }, [])
 
   function handleContentChange(value: string) {
     setContent(value)
@@ -82,8 +99,21 @@ function PostInput({
   }
 
   const createLocalPreview = useCallback((file: File): string => {
-    return URL.createObjectURL(file)
+    const url = URL.createObjectURL(file)
+    localUrlsRef.current.add(url)
+    return url
   }, [])
+
+  function releasePreview(id: string) {
+    setUploadingItems(prev => {
+      const item = prev.find(i => i.id === id)
+      if (item) {
+        URL.revokeObjectURL(item.localUrl)
+        localUrlsRef.current.delete(item.localUrl)
+      }
+      return prev.filter(i => i.id !== id)
+    })
+  }
 
   async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -114,7 +144,6 @@ function PostInput({
   async function uploadMedia(file: File, type: 'image' | 'video') {
     const localUrl = createLocalPreview(file)
     const tempId = `uploading-${Date.now()}`
-    uploadCountRef.current++
 
     setUploadingItems(prev => [...prev, {
       id: tempId,
@@ -122,49 +151,36 @@ function PostInput({
       type,
       progress: 0
     }])
-    setIsUploading(true)
 
     try {
       const uploadFn = type === 'image' ? onImageUpload : onVideoUpload
-      const item = await uploadFn(file, (progress) => {
+      const { promise, abort } = uploadFn(file, (progress) => {
         setUploadingItems(prev => prev.map(i =>
           i.id === tempId ? { ...i, progress } : i
         ))
       })
+      abortsRef.current.set(tempId, abort)
 
-      setUploadingItems(prev => {
-        const item = prev.find(i => i.id === tempId)
-        if (item) URL.revokeObjectURL(item.localUrl)
-        return prev.filter(i => i.id !== tempId)
-      })
+      const item = await promise
+      releasePreview(tempId)
       handleMediaChange([...media, item])
     } catch (err) {
-      console.error('Upload failed:', err)
-      setUploadingItems(prev => {
-        const item = prev.find(i => i.id === tempId)
-        if (item) URL.revokeObjectURL(item.localUrl)
-        return prev.filter(i => i.id !== tempId)
-      })
+      releasePreview(tempId)
+      const message = err instanceof Error ? err.message : '上传失败，请重试'
+      // A user-initiated cancel is not a failure worth reporting.
+      if (message !== '上传已取消') showToast(message)
     } finally {
-      uploadCountRef.current--
-      setIsUploading(uploadCountRef.current > 0)
+      abortsRef.current.delete(tempId)
     }
   }
 
   function removeMedia(id: string) {
-    const item = media.find(m => m.id === id)
-    if (item?.url.startsWith('/uploads')) {
-      // It's a server URL, revoke would be handled on unmount
-    }
     handleMediaChange(media.filter(m => m.id !== id))
   }
 
   function removeUploadingItem(id: string) {
-    setUploadingItems(prev => {
-      const item = prev.find(i => i.id === id)
-      if (item) URL.revokeObjectURL(item.localUrl)
-      return prev.filter(i => i.id !== id)
-    })
+    abortsRef.current.get(id)?.()
+    releasePreview(id)
   }
 
   function handleLocate() {
@@ -209,10 +225,11 @@ function PostInput({
     setLocationError('')
   }
 
-  function handleSubmit() {
-    if (!content.trim() && media.length === 0) return
-    onSubmit(content, media, selectedEmotion, location)
-    if (!isEditing) {
+  async function handleSubmit() {
+    if (isUploading || (!content.trim() && media.length === 0)) return
+    const saved = await onSubmit(content, media, selectedEmotion, location)
+    // Only wipe the draft once the server has actually accepted it.
+    if (saved && !isEditing) {
       setContent('')
       handleMediaChange([])
       setLocation(null)
@@ -221,7 +238,7 @@ function PostInput({
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-      handleSubmit()
+      void handleSubmit()
     }
   }
 
@@ -315,26 +332,26 @@ function PostInput({
 
       {/* Attachments */}
       <div className="attachment-row">
-        <label className={`attachment-btn ${isUploadingOrHasItems ? 'disabled' : ''}`}>
+        <label className={`attachment-btn ${isUploading ? 'disabled' : ''}`}>
           <span>⊕</span>
           <span>照片</span>
           <input
             ref={imageInputRef}
             type="file"
             accept="image/*"
-            disabled={isUploadingOrHasItems}
+            disabled={isUploading}
             style={{ display: 'none' }}
             onChange={handleImageSelect}
           />
         </label>
-        <label className={`attachment-btn ${isUploadingOrHasItems ? 'disabled' : ''}`}>
+        <label className={`attachment-btn ${isUploading ? 'disabled' : ''}`}>
           <span>▶</span>
           <span>视频</span>
           <input
             ref={videoInputRef}
             type="file"
             accept="video/*"
-            disabled={isUploadingOrHasItems}
+            disabled={isUploading}
             style={{ display: 'none' }}
             onChange={handleVideoSelect}
           />
@@ -384,7 +401,7 @@ function PostInput({
         <button
           className="submit-btn"
           onClick={handleSubmit}
-          disabled={isUploadingOrHasItems || (!content.trim() && media.length === 0)}
+          disabled={isUploading || (!content.trim() && media.length === 0)}
           style={{ flex: 1 }}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

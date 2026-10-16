@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Footer from '../components/Footer'
-
+import { getMe, getToken, login } from '../api/client'
+import { showToast } from '../components/Toaster'
 
 function HomePage() {
   const navigate = useNavigate()
@@ -10,6 +11,7 @@ function HomePage() {
   const [passwordInput, setPasswordInput] = useState('')
   const [error, setError] = useState(false)
   const [focused, setFocused] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -18,6 +20,22 @@ function HomePage() {
     }
   }, [showPasswordModal])
 
+  // An unexpired token means we can skip the password prompt entirely.
+  useEffect(() => {
+    if (!getToken()) return
+    let cancelled = false
+    getMe()
+      .then(person => {
+        if (!cancelled) navigate('/timeline/' + person.id, { replace: true })
+      })
+      .catch(() => {
+        /* stale token; stay on the landing page */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [navigate])
+
   function handlePersonClick(personId: string) {
     setSelectedPerson(personId)
     setPasswordInput('')
@@ -25,19 +43,24 @@ function HomePage() {
     setShowPasswordModal(true)
   }
 
-  function handlePasswordSubmit() {
-    const correctPassword = selectedPerson === 'person-a' ? PASSWORD : PERSON_PASSWORD
-    if (passwordInput === correctPassword) {
+  async function handlePasswordSubmit() {
+    if (!selectedPerson || submitting) return
+    setSubmitting(true)
+    try {
+      const result = await login(selectedPerson, passwordInput)
       setShowPasswordModal(false)
-      navigate(`/timeline/${selectedPerson}`)
-    } else {
+      navigate('/timeline/' + result.person.id)
+    } catch (err) {
       setError(true)
+      showToast(err instanceof Error ? err.message : '登录失败，请重试')
+    } finally {
+      setSubmitting(false)
     }
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Enter') {
-      handlePasswordSubmit()
+      void handlePasswordSubmit()
     }
   }
 
@@ -136,7 +159,7 @@ function HomePage() {
             {/* Error Message */}
             {error && (
               <p className="unlock-error">
-                <span>�</span> 密码错误，请重试
+                <span aria-hidden="true">⚠</span> 密码错误，请重试
               </p>
             )}
 
@@ -150,9 +173,10 @@ function HomePage() {
               </button>
               <button
                 className="unlock-btn confirm"
-                onClick={handlePasswordSubmit}
+                onClick={() => void handlePasswordSubmit()}
+                disabled={submitting || passwordInput.length === 0}
               >
-                解锁
+                {submitting ? '解锁中...' : '解锁'}
               </button>
             </div>
           </div>

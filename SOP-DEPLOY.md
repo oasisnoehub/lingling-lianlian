@@ -76,7 +76,21 @@ CMD ["node", "dist/server/index.js"]
 
 ### 2. docker-compose.yml (带 Traefik 标签和卷挂载)
 
-部署时在 `docker-compose.yml` 同目录的 `.env` 中配置 `AMAP_KEY`，Compose 会将其传入后端容器；不要将密钥提交到代码仓库。
+部署时在 `docker-compose.yml` 同目录的 `.env` 中配置下列变量，Compose 会将其传入后端容器；不要将密钥提交到代码仓库。
+
+| 变量 | 用途 |
+|------|------|
+| `AMAP_KEY` | 高德 Web 服务 Key，用于把 GPS 坐标转成中文地址 |
+| `AUTH_SECRET` | 登录令牌签名密钥，修改后所有人需要重新登录 |
+| `PERSON_A_PASSWORD` | Lingling 的解锁密码 |
+| `PERSON_B_PASSWORD` | Lianlian 的解锁密码 |
+| `CORS_ORIGIN` | 允许访问 API 的浏览器来源，多个用逗号分隔 |
+
+首次部署可用下面的命令生成 `AUTH_SECRET`：
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
 
 ```yaml
 services:

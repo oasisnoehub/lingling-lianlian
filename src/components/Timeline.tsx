@@ -2,9 +2,12 @@ import { useState } from 'react'
 import { PostWithAuthor, MediaItem } from '../types'
 import { deletePost } from '../api/client'
 import MediaPreview from './MediaPreview'
+import { showToast } from './Toaster'
 
 interface TimelineProps {
   posts: PostWithAuthor[]
+  /** Whose timeline this is; only their posts can be edited or deleted here. */
+  currentPersonId: string
   onEditPost: (post: PostWithAuthor) => void
   onPostsChange: () => void
 }
@@ -39,7 +42,7 @@ function formatTime(timestamp: number): string {
   return timeFormatter.format(new Date(timestamp)).replace(/\//g, '-')
 }
 
-function Timeline({ posts, onEditPost, onPostsChange }: TimelineProps) {
+function Timeline({ posts, currentPersonId, onEditPost, onPostsChange }: TimelineProps) {
   const [previewMedia, setPreviewMedia] = useState<MediaItem | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null)
 
@@ -48,8 +51,9 @@ function Timeline({ posts, onEditPost, onPostsChange }: TimelineProps) {
       await deletePost(postId)
       setShowDeleteConfirm(null)
       onPostsChange()
+      showToast('已删除', 'success')
     } catch (err) {
-      console.error('Failed to delete post:', err)
+      showToast(err instanceof Error ? err.message : '删除失败，请重试')
     }
   }
 
@@ -69,7 +73,13 @@ function Timeline({ posts, onEditPost, onPostsChange }: TimelineProps) {
         {posts.map((post) => {
           const mediaClass = post.media.length === 1
             ? 'single'
-            : 'double'
+            : post.media.length === 2
+              ? 'double'
+              : post.media.length === 3
+                ? 'triple'
+                : 'multiple'
+
+          const isOwnPost = post.author_id === currentPersonId
 
           return (
             <div
@@ -88,7 +98,8 @@ function Timeline({ posts, onEditPost, onPostsChange }: TimelineProps) {
                   <span className="timeline-time">{formatTime(post.created_at)}</span>
                 </div>
                 <div className="timeline-card">
-                  <div className="post-actions">
+                  {isOwnPost && (
+                    <div className="post-actions">
                     <button
                       className="post-action-btn"
                       onClick={() => onEditPost(post)}
@@ -104,6 +115,7 @@ function Timeline({ posts, onEditPost, onPostsChange }: TimelineProps) {
                       🗑
                     </button>
                   </div>
+                  )}
 
                   {post.content && (
                     <div className="timeline-text">{post.content}</div>

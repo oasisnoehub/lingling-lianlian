@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3'
-import { join } from 'path'
-import { mkdirSync, existsSync } from 'fs'
+import { basename, join } from 'path'
+import { mkdirSync, existsSync, unlinkSync } from 'fs'
 
 // In production: DATA_DIR=/app/data, UPLOADS_DIR=/app/uploads
 // Both are mounted as Docker volumes
@@ -154,6 +154,34 @@ export function getTimeline(): PostWithAuthor[] {
   }))
 }
 
+export function getPostAuthorId(id: string): string | undefined {
+  const row = db.prepare('SELECT author_id FROM posts WHERE id = ?').get(id) as
+    | { author_id: string }
+    | undefined
+  return row?.author_id
+}
+
+/**
+ * Removes a post's media files from disk. Only basenames are used so a
+ * crafted media URL can never escape the uploads directory. Failures are
+ * logged rather than thrown: the post itself is already gone, and an
+ * orphaned file is recoverable while a failed request is not.
+ */
+function removeMediaFiles(media: MediaItem[]): void {
+  for (const item of media) {
+    const filename = basename(item.url)
+    if (!filename || filename === item.url) continue
+    try {
+      unlinkSync(join(UPLOADS_DIR, filename))
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code
+      if (code !== 'ENOENT') {
+        console.error('Failed to delete media file', filename, err)
+      }
+    }
+  }
+}
+
 export function createPost(
   authorId: string,
   content: string,
@@ -191,7 +219,7 @@ export function updatePost(
     id: string
     author_id: string
     content: string
-    emotion?: string
+    emotion?: string | null
     media: string
     location: string | null
     created_at: number
@@ -199,8 +227,9 @@ export function updatePost(
 
   if (!existing) return undefined
 
+  const updatedAt = Date.now()
   const updates: string[] = ['content = ?', 'updated_at = ?']
-  const values: (string | number | null)[] = [content, Date.now()]
+  const values: (string | number | null)[] = [content, updatedAt]
 
   if (emotion !== undefined) {
     updates.push('emotion = ?')
@@ -221,12 +250,19 @@ export function updatePost(
 
   db.prepare(`UPDATE posts SET ${updates.join(', ')} WHERE id = ?`).run(...values)
 
-  const updatedAt = Date.now()
+  // Drop files for media the user removed while editing.
+  if (media !== undefined) {
+    const kept = new Set(media.map(item => basename(item.url)))
+    const removed = (JSON.parse(existing.media) as MediaItem[])
+      .filter(item => !kept.has(basename(item.url)))
+    if (removed.length > 0) removeMediaFiles(removed)
+  }
+
   return {
     id,
     author_id: existing.author_id,
     content,
-    emotion: emotion !== undefined ? emotion : existing.emotion,
+    emotion: emotion !== undefined ? emotion : (existing.emotion ?? undefined),
     media: media !== undefined ? media : JSON.parse(existing.media),
     location: location !== undefined
       ? location || undefined
@@ -237,8 +273,21 @@ export function updatePost(
 }
 
 export function deletePost(id: string): boolean {
+  const existing = db.prepare('SELECT media FROM posts WHERE id = ?').get(id) as
+    | { media: string }
+    | undefined
+  if (!existing) return false
+
   const result = db.prepare('DELETE FROM posts WHERE id = ?').run(id)
-  return result.changes > 0
+  if (result.changes === 0) return false
+
+  try {
+    removeMediaFiles(JSON.parse(existing.media) as MediaItem[])
+  } catch (err) {
+    console.error('Failed to parse media while deleting post', id, err)
+  }
+
+  return true
 }
 
 export default db

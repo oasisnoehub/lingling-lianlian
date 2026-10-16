@@ -13,6 +13,10 @@ services:
       - DATA_DIR=/app/data
       - UPLOADS_DIR=/app/uploads
       - AMAP_KEY=${AMAP_KEY}
+      - CORS_ORIGIN=${CORS_ORIGIN}
+      - AUTH_SECRET=${AUTH_SECRET}
+      - PERSON_A_PASSWORD=${PERSON_A_PASSWORD}
+      - PERSON_B_PASSWORD=${PERSON_B_PASSWORD}
     restart: unless-stopped
     labels:
       - "traefik.enable=true"

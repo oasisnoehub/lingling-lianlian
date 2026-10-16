@@ -1,10 +1,25 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Person, PostWithAuthor, MediaItem, PostLocation } from '../types'
-import { getPersons, getTimeline, createPost, updatePost, uploadImage, uploadVideo } from '../api/client'
+import {
+  ApiError,
+  UploadTask,
+  createPost,
+  getMe,
+  getTimeline,
+  getToken,
+  logout,
+  updatePost,
+  uploadImage,
+  uploadVideo,
+} from '../api/client'
 import PostInput from '../components/PostInput'
 import Timeline from '../components/Timeline'
 import Footer from '../components/Footer'
+import { showToast } from '../components/Toaster'
+
+/** How often the shared timeline re-fetches, in ms. */
+const REFRESH_INTERVAL = 15000
 
 interface Emotion {
   emoji: string
@@ -30,7 +45,7 @@ const emotions: Emotion[] = [
 function TimelinePage() {
   const navigate = useNavigate()
   const { personId } = useParams<{ personId: string }>()
-  const [persons, setPersons] = useState<Person[]>([])
+  const [currentPerson, setCurrentPerson] = useState<Person | null>(null)
   const [posts, setPosts] = useState<PostWithAuthor[]>([])
   const [selectedEmotion, setSelectedEmotion] = useState<string>('')
   const [loading, setLoading] = useState(true)
@@ -42,24 +57,53 @@ function TimelinePage() {
   const [editEmotion, setEditEmotion] = useState<string>('')
   const [editLocation, setEditLocation] = useState<PostLocation | null>(null)
 
-  const currentPerson = persons.find(p => p.id === personId)
-
   useEffect(() => {
-    loadData()
-  }, [personId])
+    if (!getToken()) {
+      navigate('/', { replace: true })
+      return
+    }
+    void loadData()
+
+    // Pick up the other person's posts without a manual refresh.
+    const timer = setInterval(() => void refreshTimeline(), REFRESH_INTERVAL)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refreshTimeline()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [personId, navigate])
 
   async function loadData() {
     try {
-      const [personsData, timelineData] = await Promise.all([
-        getPersons(),
-        getTimeline(),
-      ])
-      setPersons(personsData)
+      const [me, timelineData] = await Promise.all([getMe(), getTimeline()])
+      setCurrentPerson(me)
       setPosts(timelineData)
     } catch (err) {
-      console.error('Failed to load data:', err)
+      if (err instanceof ApiError && err.status === 401) {
+        logout()
+        navigate('/', { replace: true })
+        return
+      }
+      showToast(err instanceof Error ? err.message : '加载失败，请重试')
     } finally {
       setLoading(false)
+    }
+  }
+
+  /** Silent refresh used by the poller: failures here must not spam toasts. */
+  async function refreshTimeline() {
+    if (document.hidden) return
+    try {
+      setPosts(await getTimeline())
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        logout()
+        navigate('/', { replace: true })
+      }
     }
   }
 
@@ -88,49 +132,50 @@ function TimelinePage() {
     media: MediaItem[],
     emotion?: string,
     location?: PostLocation | null
-  ) {
-    if (!personId || (!content.trim() && media.length === 0)) return
+  ): Promise<boolean> {
+    if (!personId || (!content.trim() && media.length === 0)) return false
 
     try {
       if (editingPost) {
-        // Update existing post
         await updatePost(editingPost.id, content.trim(), emotion, media, location)
         setEditingPost(null)
         setEditLocation(null)
       } else {
-        // Create new post
-        await createPost({
-          author_id: personId,
-          content: content.trim(),
-          emotion,
-          media,
-          location,
-        })
+        // The server derives the author from the token, so it cannot be spoofed.
+        await createPost({ content: content.trim(), emotion, media, location })
       }
       setEditContent('')
       setEditMedia([])
       setEditEmotion('')
       setEditLocation(null)
       setSelectedEmotion('')
-      loadData()
+      showToast(editingPost ? '修改已保存' : '发布成功', 'success')
+      await loadData()
+      return true
     } catch (err) {
-      console.error('Failed to save post:', err)
+      showToast(err instanceof Error ? err.message : '保存失败，请重试')
+      return false
     }
   }
 
-  async function handleImageUpload(file: File): Promise<MediaItem> {
-    return uploadImage(file)
+  function handleImageUpload(file: File, onProgress?: (p: number) => void): UploadTask {
+    return uploadImage(file, onProgress)
   }
 
-  async function handleVideoUpload(file: File): Promise<MediaItem> {
-    return uploadVideo(file)
+  function handleVideoUpload(file: File, onProgress?: (p: number) => void): UploadTask {
+    return uploadVideo(file, onProgress)
   }
 
-  async function handlePostsChange() {
-    loadData()
+  function handlePostsChange() {
+    void loadData()
   }
 
-  if (loading) {
+  function handleLogout() {
+    logout()
+    navigate('/', { replace: true })
+  }
+
+  if (loading || !personId) {
     return (
       <div className="app-container" data-theme={personId === 'person-b' ? 'lianlian' : 'lingling'}>
         <div className="loading-container">
@@ -149,6 +194,9 @@ function TimelinePage() {
         <h1 className="timeline-page-title">
           {currentPerson ? `${currentPerson.name} 的时间线` : '共享时间线'}
         </h1>
+        <button className="logout-btn" onClick={handleLogout} title="退出登录">
+          退出
+        </button>
       </header>
 
       {currentPerson && (
@@ -191,6 +239,7 @@ function TimelinePage() {
 
       <Timeline
         posts={posts}
+        currentPersonId={personId}
         onEditPost={handleEditPost}
         onPostsChange={handlePostsChange}
       />

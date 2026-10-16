@@ -2111,3 +2111,91 @@ button {
   opacity: 1;
   color: var(--primary-hover);
 }
+
+/* ---------- toasts ---------- */
+.toast-stack {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 16px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  pointer-events: none;
+  width: min(420px, calc(100vw - 32px));
+}
+
+.toast {
+  pointer-events: auto;
+  cursor: pointer;
+  padding: 11px 18px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--text-primary);
+  background: rgba(20, 24, 38, 0.92);
+  border: 1px solid var(--border-glass);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  animation: toast-in 0.24s ease-out;
+}
+
+.toast-error {
+  border-color: rgba(248, 113, 113, 0.5);
+  box-shadow: var(--shadow-card), 0 0 0 1px rgba(248, 113, 113, 0.15);
+}
+
+.toast-success {
+  border-color: rgba(52, 211, 153, 0.5);
+}
+
+.toast-info {
+  border-color: rgba(var(--primary-rgb), 0.5);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+}
+
+/* ---------- logout button ---------- */
+.logout-btn {
+  background: var(--surface-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: 10px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.logout-btn:hover {
+  background: var(--surface-glass-hover);
+  border-color: var(--border-glass-hover);
+  color: var(--text-primary);
+}
+
+/* Keeps the title optically centred between the back and logout buttons. */
+.timeline-page-title {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  margin: 0;
+}
