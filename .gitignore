@@ -4,8 +4,21 @@ node_modules/
 # Build output
 dist/
 
-# Secrets — never commit; copy .env.example to .env and fill it in
+# Secrets — copy .env.example to .env and fill it in.
+# .env.* covers .env.local / .env.production etc.; the negation keeps the
+# committed template itself tracked.
 .env
+.env.*
+!.env.example
+
+# Credential-shaped files. Nothing in this project uses these, but a stray
+# private key should never be committable by accident.
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+service-account*.json
 
 # Runtime data (persisted via Docker volumes, not via git)
 data/
@@ -21,3 +34,7 @@ tClear-Host
 .vscode/
 .idea/
 *.log
+
+# Test / build artefacts
+coverage/
+*.tsbuildinfo

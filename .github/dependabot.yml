@@ -1,0 +1,33 @@
+version: 2
+
+updates:
+  # Dependency version updates + (separately, automatic) security updates.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Shanghai
+    open-pull-requests-limit: 5
+    # Bundle updates so a 6-package bump is one reviewable PR, not six.
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+      dev-dependencies:
+        dependency-type: development
+
+  # Keeps actions/checkout and actions/setup-node themselves current.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Shanghai
+    groups:
+      actions:
+        patterns:
+          - "*"
