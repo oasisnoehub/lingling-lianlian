@@ -80,8 +80,8 @@ cp .env.example .env
 | `UPLOADS_DIR` | 否 | 上传文件目录，默认 ./uploads |
 | `CORS_ORIGIN` | 是 | 允许的浏览器来源，如 https://example.com |
 | `AUTH_SECRET` | 是 | JWT 签名密钥，生成：`node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
-| `PERSON_A_PASSWORD` | 是 | Lingling 的解锁密码 |
-| `PERSON_B_PASSWORD` | 是 | Lianlian 的解锁密码 |
+| `PERSON_A_PASSWORD` | 是 | Lingling 的解锁密码（联系管理员获取） |
+| `PERSON_B_PASSWORD` | 是 | Lianlian 的解锁密码（联系管理员获取） |
 | `AMAP_KEY` | 否 | 高德地图 Web 服务 Key，用于 GPS 转中文地址 |
 | `BACKUP_ENABLED` | 否 | 是否启用自动备份，默认 true |
 | `BACKUP_KEEP_DAYS` | 否 | 数据库备份保留天数，默认 30 |
