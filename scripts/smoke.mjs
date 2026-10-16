@@ -243,16 +243,23 @@ async function run() {
   // The server was started with a short BACKUP_INTERVAL_MS, so by now at least
   // one backup should exist in .smoke-backups.
   const backupDir = join(ROOT, '.smoke-backups')
-  const hasDbBackup = () => {
+  // A backup is only finished once BOTH artefacts exist: runBackup() writes
+  // the database first and copies the uploads afterwards, so waiting on the
+  // .db alone races the media copy.
+  const backupComplete = () => {
     if (!existsSync(backupDir)) return false
     try {
-      return readdirSync(backupDir).some(f => f.startsWith('posts-') && f.endsWith('.db'))
+      const files = readdirSync(backupDir)
+      return (
+        files.some(f => f.startsWith('posts-') && f.endsWith('.db')) &&
+        files.some(f => f.startsWith('uploads-'))
+      )
     } catch {
       return false
     }
   }
-  const made = await waitFor(hasDbBackup)
-  check('scheduled backup produced a database copy', made)
+  const made = await waitFor(backupComplete)
+  check('scheduled backup produced database + media copies', made)
   if (made) {
     const files = readdirSync(backupDir)
     check('backup includes the uploads dir', files.some(f => f.startsWith('uploads-')))
