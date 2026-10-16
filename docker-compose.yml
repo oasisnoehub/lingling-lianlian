@@ -7,6 +7,7 @@ services:
     volumes:
       - lingling-data:/app/data
       - lingling-uploads:/app/uploads
+      - lingling-backups:/app/backups
     environment:
       - NODE_ENV=production
       - PORT=3456
@@ -17,7 +18,12 @@ services:
       - AUTH_SECRET=${AUTH_SECRET}
       - PERSON_A_PASSWORD=${PERSON_A_PASSWORD}
       - PERSON_B_PASSWORD=${PERSON_B_PASSWORD}
+      - BACKUP_DIR=/app/backups
+      - BACKUP_KEEP_DAYS=${BACKUP_KEEP_DAYS:-30}
+      - BACKUP_UPLOADS_KEEP_DAYS=${BACKUP_UPLOADS_KEEP_DAYS:-7}
     restart: unless-stopped
+    # Give the server time to checkpoint SQLite and close cleanly on redeploy.
+    stop_grace_period: 15s
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=traefik_public"
@@ -37,3 +43,4 @@ networks:
 volumes:
   lingling-data:
   lingling-uploads:
+  lingling-backups:

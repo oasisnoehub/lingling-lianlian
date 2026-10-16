@@ -10,7 +10,8 @@ import postsRouter from './routes/posts.js'
 import uploadRouter from './routes/upload.js'
 import locationRouter from './routes/location.js'
 import { requireAuth } from './auth.js'
-import { getTimeline, UPLOADS_DIR } from './db.js'
+import { closeDatabase, getTimeline, getTimelineETag, UPLOADS_DIR } from './db.js'
+import { startBackupSchedule, stopBackupSchedule } from './backup.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(__dirname, '..', '..')
@@ -78,13 +79,30 @@ app.use('/api/posts', postsRouter)
 app.use('/api/upload', requireAuth, uploadRouter)
 app.use('/api/location', requireAuth, locationRouter)
 
-app.get('/api/timeline', requireAuth, (_req, res) => {
+app.get('/api/timeline', requireAuth, (req, res) => {
   try {
+    const etag = getTimelineETag()
+    res.setHeader('ETag', etag)
+    res.setHeader('Cache-Control', 'no-cache')
+
+    // The poller sends the ETag it last saw; an unchanged timeline costs a
+    // 304 with no body instead of re-sending every post every 15 seconds.
+    if (req.headers['if-none-match'] === etag) {
+      res.status(304).end()
+      return
+    }
+
     res.json(getTimeline())
   } catch (err) {
     console.error('Error getting timeline:', err)
     res.status(500).json({ error: 'Failed to get timeline' })
   }
+})
+
+// Unauthenticated liveness probe for Docker/Traefik. Deliberately cheap: it
+// touches nothing so a healthcheck can never interfere with real traffic.
+app.get('/api/health', (_req, res) => {
+  res.json({ ok: true, uptime: Math.round(process.uptime()) })
 })
 
 /**
@@ -151,6 +169,33 @@ app.use((err: HttpError, _req: express.Request, res: express.Response, next: exp
   res.status(500).json({ error: '服务器内部错误' })
 })
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`)
 })
+
+startBackupSchedule()
+
+// Docker sends SIGTERM on redeploy. Checkpoint SQLite before exiting so the
+// next start does not have to replay a large WAL.
+let shuttingDown = false
+function shutdown(signal: string) {
+  if (shuttingDown) return
+  shuttingDown = true
+  console.log(signal + ' received, shutting down...')
+
+  const forceExit = setTimeout(() => {
+    console.error('Forcing exit after 10s')
+    process.exit(1)
+  }, 10_000)
+  forceExit.unref()
+
+  server.close(() => {
+    stopBackupSchedule()
+    closeDatabase()
+    clearTimeout(forceExit)
+    process.exit(0)
+  })
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))

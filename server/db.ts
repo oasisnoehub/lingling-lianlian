@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3'
 import { basename, join } from 'path'
 import { mkdirSync, existsSync, unlinkSync } from 'fs'
+import { createHash } from 'node:crypto'
 
 // In production: DATA_DIR=/app/data, UPLOADS_DIR=/app/uploads
 // Both are mounted as Docker volumes
@@ -162,6 +163,22 @@ export function getPostAuthorId(id: string): string | undefined {
 }
 
 /**
+ * Cheap fingerprint of the whole timeline, used to answer conditional polls
+ * with 304. COUNT + MAX + SUM changes whenever a post is added, edited or
+ * removed, so a client that polls can skip re-sending the entire timeline.
+ */
+export function getTimelineETag(): string {
+  const row = db.prepare(`
+    SELECT COUNT(*) AS count,
+           MAX(COALESCE(updated_at, created_at)) AS latest,
+           SUM(COALESCE(updated_at, created_at)) AS checksum
+    FROM posts
+  `).get() as { count: number; latest: number | null; checksum: number | null }
+
+  const fingerprint = [row.count, row.latest ?? 0, row.checksum ?? 0].join(':')
+  return '"' + createHash('sha1').update(fingerprint).digest('base64url').slice(0, 22) + '"'
+}
+/**
  * Removes a post's media files from disk. Only basenames are used so a
  * crafted media URL can never escape the uploads directory. Failures are
  * logged rather than thrown: the post itself is already gone, and an
@@ -288,6 +305,22 @@ export function deletePost(id: string): boolean {
   }
 
   return true
+}
+
+/**
+ * Checkpoint the WAL and close the handle. Safe to call once, at shutdown:
+ * without it a SIGTERM leaves -wal/-shm files behind for the next start.
+ */
+let closed = false
+export function closeDatabase(): void {
+  if (closed) return
+  closed = true
+  try {
+    db.pragma('wal_checkpoint(TRUNCATE)')
+    db.close()
+  } catch (err) {
+    console.error('Error closing database:', err)
+  }
 }
 
 export default db

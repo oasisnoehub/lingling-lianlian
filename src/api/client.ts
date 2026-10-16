@@ -31,7 +31,7 @@ export function setToken(token: string | null): void {
   }
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
   const headers = new Headers(options.headers)
   const token = getToken()
   if (token) headers.set('Authorization', 'Bearer ' + token)
@@ -39,15 +39,14 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers.set('Content-Type', 'application/json')
   }
 
-  let response: Response
   try {
-    response = await fetch(API_BASE + path, { ...options, headers })
+    return await fetch(API_BASE + path, { ...options, headers })
   } catch {
     throw new ApiError('网络连接失败，请检查网络后重试', 0)
   }
+}
 
-  if (response.status === 204) return undefined as T
-
+async function toApiError(response: Response): Promise<ApiError> {
   const text = await response.text()
   let payload: unknown = null
   if (text) {
@@ -57,13 +56,17 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       payload = null
     }
   }
+  const serverMessage = (payload as { error?: string } | null)?.error
+  return new ApiError(serverMessage || '请求失败（' + response.status + '）', response.status)
+}
 
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const response = await apiFetch(path, options)
+  if (response.status === 204) return undefined as T
   if (!response.ok) {
-    const serverMessage = (payload as { error?: string } | null)?.error
-    throw new ApiError(serverMessage || '请求失败（' + response.status + '）', response.status)
+    throw await toApiError(response)
   }
-
-  return payload as T
+  return (await response.json()) as T
 }
 
 export interface LoginResult {
@@ -82,6 +85,7 @@ export async function login(personId: string, password: string): Promise<LoginRe
 
 export async function logout(): Promise<void> {
   setToken(null)
+  timelineETag = null
 }
 
 export async function getMe(): Promise<Person> {
@@ -89,8 +93,24 @@ export async function getMe(): Promise<Person> {
   return result.person
 }
 
-export async function getTimeline(): Promise<PostWithAuthor[]> {
-  return request<PostWithAuthor[]>('/timeline')
+/** ETag from the last successful timeline fetch, replayed on the next poll. */
+let timelineETag: string | null = null
+
+/**
+ * Returns the posts, or null when the server reports nothing has changed since
+ * the previous call. This keeps the 15s poll costing a 304 rather than a full
+ * copy of the timeline every time.
+ */
+export async function getTimeline(): Promise<PostWithAuthor[] | null> {
+  const headers = new Headers()
+  if (timelineETag) headers.set('If-None-Match', timelineETag)
+
+  const response = await apiFetch('/timeline', { headers })
+  if (response.status === 304) return null
+  if (!response.ok) throw await toApiError(response)
+
+  timelineETag = response.headers.get('ETag')
+  return (await response.json()) as PostWithAuthor[]
 }
 
 export interface CreatePostData {

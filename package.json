@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "vite build && tsc -p tsconfig.server.json",
     "preview": "vite preview",
-    "server": "node --env-file=.env --import tsx --watch server/index.ts"
+    "server": "node --env-file=.env --import tsx --watch server/index.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.server.json",
+    "smoke": "node scripts/smoke.mjs",
+    "verify": "npm run typecheck && npm run build && npm run smoke"
   },
   "dependencies": {
     "better-sqlite3": "^11.3.0",

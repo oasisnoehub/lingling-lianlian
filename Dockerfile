@@ -48,13 +48,20 @@ COPY --from=builder /app/dist ./dist
 # Copy compiled server from server-builder
 COPY --from=server-builder /app/dist/server ./dist/server
 
-# Create runtime directories (both are backed by Docker volumes)
-RUN mkdir -p /app/data /app/uploads
+# Create runtime directories (all three are backed by Docker volumes)
+RUN mkdir -p /app/data /app/uploads /app/backups
 
 ENV NODE_ENV=production
 ENV PORT=3456
 ENV DATA_DIR=/app/data
+ENV UPLOADS_DIR=/app/uploads
+ENV BACKUP_DIR=/app/backups
+ENV BACKUP_KEEP_DAYS=30
+ENV BACKUP_UPLOADS_KEEP_DAYS=7
 
 EXPOSE 3456
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
+  CMD wget -q -O /dev/null "http://127.0.0.1:${PORT}/api/health" || exit 1
 
 CMD ["node", "dist/server/index.js"]

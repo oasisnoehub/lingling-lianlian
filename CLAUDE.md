@@ -17,11 +17,16 @@ request body, and a post can only be edited or deleted by its author.
 npm run dev          # Start Vite dev server (port 5173, proxies API to :3456)
 npm run server       # Start Express server with hot-reload (tsx watch)
 
-# Build
-npm run build        # Compile server (tsc -p tsconfig.server.json) + build frontend (vite build)
+# Build (vite first: its emptyOutDir would otherwise delete dist/server)
+npm run build
 
 # Production
 node dist/server/index.js   # Run compiled server
+
+# Checks
+npm run typecheck    # tsc --noEmit on both tsconfigs
+npm run smoke        # End-to-end test against the production build
+npm run verify       # typecheck + build + smoke
 ```
 
 ## Architecture
@@ -38,6 +43,7 @@ node dist/server/index.js   # Run compiled server
 - `server/index.ts` - Main Express server; serves frontend static files in production (`NODE_ENV=production`)
 - `server/db.ts` - SQLite database setup with `persons` and `posts` tables
 - `server/auth.ts` - Token issue/verify, `requireAuth` middleware, rate limiter
+- `server/backup.ts` - Scheduled backup of the DB and uploads; see docs/RESTORE.md
 - `server/routes/auth.ts` - `POST /api/auth/login`, `GET /api/auth/me`
 - `server/routes/posts.ts` - CRUD endpoints for posts
 - `server/routes/persons.ts` - Person data endpoints
@@ -67,6 +73,7 @@ All except `/api/auth/*` require an `Authorization: Bearer <token>` header.
 | `POST /api/upload/image` | Upload image (MIME-whitelisted) |
 | `POST /api/upload/video` | Upload video (MIME-whitelisted) |
 | `GET /api/location/reverse` | Amap reverse geocoding |
+| `GET /api/health` | Unauthenticated liveness probe (Docker HEALTHCHECK) |
 
 ### Required environment variables
 See `.env.example`. `AUTH_SECRET`, `PERSON_A_PASSWORD` and

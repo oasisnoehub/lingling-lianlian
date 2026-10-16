@@ -81,7 +81,8 @@ function TimelinePage() {
     try {
       const [me, timelineData] = await Promise.all([getMe(), getTimeline()])
       setCurrentPerson(me)
-      setPosts(timelineData)
+      // null means the server said nothing changed since our last fetch.
+      if (timelineData) setPosts(timelineData)
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         logout()
@@ -98,7 +99,8 @@ function TimelinePage() {
   async function refreshTimeline() {
     if (document.hidden) return
     try {
-      setPosts(await getTimeline())
+      const updated = await getTimeline()
+      if (updated) setPosts(updated)
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         logout()
