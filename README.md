@@ -79,56 +79,11 @@ cp .env.example .env
 | `DATA_DIR` | 否 | 数据库目录，默认 ./data |
 | `UPLOADS_DIR` | 否 | 上传文件目录，默认 ./uploads |
 | `CORS_ORIGIN` | 是 | 允许的浏览器来源，如 https://example.com |
-| `AUTH_SECRET` | 是 | JWT 签名密钥，生成：`node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
-| `PERSON_A_PASSWORD` | 是 | Lingling 的解锁密码（联系管理员获取） |
-| `PERSON_B_PASSWORD` | 是 | Lianlian 的解锁密码（联系管理员获取） |
+| `AUTH_SECRET` | 是 | JWT 签名密钥 |
 | `AMAP_KEY` | 否 | 高德地图 Web 服务 Key，用于 GPS 转中文地址 |
 | `BACKUP_ENABLED` | 否 | 是否启用自动备份，默认 true |
 | `BACKUP_KEEP_DAYS` | 否 | 数据库备份保留天数，默认 30 |
 | `BACKUP_UPLOADS_KEEP_DAYS` | 否 | 媒体备份保留天数，默认 7 |
-
-## API 接口
-
-### 认证
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/auth/login` | 登录，返回 JWT token |
-| GET | `/api/auth/me` | 获取当前用户信息 |
-
-### 数据
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/timeline` | 获取共享时间线（含 ETag 缓存） |
-| GET | `/api/persons` | 获取所有用户信息 |
-| POST | `/api/posts` | 创建帖子 |
-| PUT | `/api/posts/:id` | 更新帖子 |
-| DELETE | `/api/posts/:id` | 删除帖子 |
-| POST | `/api/upload/image` | 上传图片 |
-| POST | `/api/upload/video` | 上传视频 |
-| GET | `/api/location/reverse` | GPS 坐标转中文地址 |
-| GET | `/api/health` | 健康检查 |
-
-## 部署
-
-详见 [SOP-DEPLOY.md](SOP-DEPLOY.md)
-
-### 快速部署
-
-```bash
-# 1. 本地构建 amd64 镜像
-docker build -t lingling-lianlian:latest --platform linux/amd64 .
-
-# 2. 导出并传输到服务器
-docker save lingling-lianlian:latest | gzip > /tmp/lingling-lianlian.tar.gz
-scp -i ~/.ssh/id_rsa /tmp/lingling-lianlian.tar.gz root@39.108.89.255:/root/
-
-# 3. 服务器加载并启动
-ssh root@39.108.89.255
-gunzip -c /root/lingling-lianlian.tar.gz | docker load
-cd /appdata/lingling_lianlian && docker-compose up -d
-```
 
 ## 数据持久化
 
@@ -139,22 +94,6 @@ cd /appdata/lingling_lianlian && docker-compose up -d
 | 备份 | `lingling-backups` | 每日自动备份 |
 
 **重要**：`docker-compose down` 不会删除卷，只有 `docker-compose down -v` 才会删除。
-
-## 故障排查
-
-```bash
-# 检查容器状态
-docker ps | grep lingling
-
-# 查看日志
-docker logs lingling_lianlian-lingling-lianlian-1
-
-# 检查 Traefik 路由
-curl http://localhost:8082/api/http/routers | grep lingling
-
-# 测试 API
-curl https://linglian.oasisnoe.com.cn/api/health
-```
 
 ## License
 
