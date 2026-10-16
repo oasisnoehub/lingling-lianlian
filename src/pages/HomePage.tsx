@@ -4,6 +4,18 @@ import Footer from '../components/Footer'
 import { getMe, getToken, login } from '../api/client'
 import { showToast } from '../components/Toaster'
 
+const PERSON_COLORS: Record<string, { color: string; name: string }> = {
+  'person-a': { color: '#4f8ef7', name: 'Lingling' },
+  'person-b': { color: '#10B981', name: 'Lianlian' },
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
 function HomePage() {
   const navigate = useNavigate()
   const [showPasswordModal, setShowPasswordModal] = useState(false)
@@ -64,6 +76,10 @@ function HomePage() {
     }
   }
 
+  const personColor = selectedPerson === 'person-b'
+    ? '#64D5FF'
+    : (selectedPerson ? PERSON_COLORS[selectedPerson].color : '#4f8ef7')
+
   return (
     <div className="app-container" data-theme={selectedPerson === 'person-b' ? 'lianlian' : 'lingling'}>
       {/* Star Background */}
@@ -103,16 +119,33 @@ function HomePage() {
               data-theme="lingling"
               onClick={() => handlePersonClick('person-a')}
             >
-              <div className="person-avatar">L</div>
-              <span className="person-name">Lingling</span>
+              <div
+                className="person-avatar"
+                style={{
+                  background: `linear-gradient(135deg, ${PERSON_COLORS['person-a'].color} 0%, ${hexToRgba(PERSON_COLORS['person-a'].color, 0.6)} 100%)`,
+                  boxShadow: `0 0 30px ${PERSON_COLORS['person-a'].color}40`,
+                }}
+              >
+                L
+              </div>
+              <span className="person-name">{PERSON_COLORS['person-a'].name}</span>
             </div>
             <div
               className="person-card"
               data-theme="lianlian"
               onClick={() => handlePersonClick('person-b')}
             >
-              <div className="person-avatar">L</div>
-              <span className="person-name">Lianlian</span>
+              <div
+                className="person-avatar"
+                style={{
+                  background: PERSON_COLORS['person-b'].color,
+                  opacity: 0.8,
+                  boxShadow: `0 0 30px ${PERSON_COLORS['person-b'].color}40`,
+                }}
+              >
+                L
+              </div>
+              <span className="person-name">{PERSON_COLORS['person-b'].name}</span>
             </div>
           </div>
 
@@ -128,13 +161,19 @@ function HomePage() {
         <div className="unlock-modal-overlay" onClick={() => setShowPasswordModal(false)}>
           <div className="unlock-modal" onClick={e => e.stopPropagation()}>
             {/* Avatar Circle */}
-            <div className="unlock-avatar">
+            <div
+              className="unlock-avatar"
+              style={{
+                background: personColor,
+                boxShadow: `0 0 40px ${personColor}40`,
+              }}
+            >
               {selectedPerson === 'person-a' ? 'L' : 'l'}
             </div>
 
             {/* Name */}
             <h3 className="unlock-name">
-              {selectedPerson === 'person-a' ? 'Lingling' : 'Lianlian'}
+              {selectedPerson ? PERSON_COLORS[selectedPerson].name : ''}
             </h3>
             <p className="unlock-desc">输入密码以解锁时间线</p>
 

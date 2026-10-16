@@ -206,6 +206,9 @@ function TimelinePage() {
           <div className="card-header">
             <div
               className="card-avatar"
+              style={{
+                background: currentPerson.avatar_color
+              }}
             >
               {currentPerson.name.charAt(0)}
             </div>

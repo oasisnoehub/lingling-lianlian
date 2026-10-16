@@ -89,6 +89,7 @@ function Timeline({ posts, currentPersonId, onEditPost, onPostsChange }: Timelin
             >
               <div
                 className="timeline-avatar"
+                style={{ background: post.author.avatar_color }}
               >
                 {post.author.name.charAt(0)}
               </div>
