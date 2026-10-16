@@ -190,7 +190,7 @@ function TimelinePage() {
   return (
     <div className="app-container" data-theme={personId === 'person-b' ? 'lianlian' : 'lingling'}>
       <header className="timeline-page-header">
-        <button className="back-btn" onClick={() => navigate('/')}>
+        <button className="back-btn" onClick={handleLogout}>
           ←
         </button>
         <h1 className="timeline-page-title">
