@@ -290,6 +290,9 @@ function removeMediaFiles(media: MediaItem[]): void {
   }
 }
 
+/** Length of random suffix in generated IDs */
+const ID_RANDOM_LENGTH = 6
+
 export function createPost(
   authorId: string,
   content: string,
@@ -298,7 +301,7 @@ export function createPost(
   location?: PostLocation | null
 ): Post {
   const now = Date.now()
-  const id = `post-${now}-${Math.random().toString(36).slice(2, 8)}`
+  const id = `post-${now}-${Math.random().toString(36).slice(2, 2 + ID_RANDOM_LENGTH)}`
 
   db.prepare(`
     INSERT INTO posts (id, author_id, content, emotion, media, location, created_at)
@@ -459,7 +462,7 @@ export function upsertReaction(
   emoji: string
 ): Reaction {
   const now = Date.now()
-  const id = `reaction-${now}-${Math.random().toString(36).slice(2, 8)}`
+  const id = `reaction-${now}-${Math.random().toString(36).slice(2, 2 + ID_RANDOM_LENGTH)}`
   
   // Check if reaction exists
   const existing = db.prepare('SELECT * FROM reactions WHERE post_id = ? AND person_id = ?').get(postId, personId) as Reaction | undefined

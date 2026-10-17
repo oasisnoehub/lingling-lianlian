@@ -114,6 +114,7 @@ export default function ReactionSelector({
 
   return (
     <div className="reaction-selector">
+      {/* Other person's reaction - shown as bubble */}
       {otherReaction && (
         <ReactionBubble
           reaction={otherReaction}
@@ -121,10 +122,7 @@ export default function ReactionSelector({
         />
       )}
 
-      {myReaction && (
-        <ReactionBubble reaction={myReaction} personName={personNames[myReaction.person_id] ?? ''} />
-      )}
-
+      {/* Trigger button - shows my reaction emoji, or placeholder if none */}
       <button
         ref={buttonRef}
         type="button"

@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
-import type { Picker } from 'emoji-picker-element'
+import { useEffect, useRef, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
+import EmojiPickerReact, { type EmojiClickData, Theme } from 'emoji-picker-react'
 
 interface EmojiPickerProps {
   /** Viewport rectangle of the button this popup is anchored to. */
@@ -13,15 +14,15 @@ interface EmojiPickerProps {
 /** The reactions people actually reach for, available without loading the picker. */
 const QUICK_EMOJIS = ['❤️', '💞', '😂', '🥰', '👍', '😭']
 
-const PICKER_WIDTH = 320
-const PICKER_HEIGHT = 400
-const QUICK_BAR_HEIGHT = 52
-const GAP = 8
-const VIEWPORT_MARGIN = 8
+const PICKER_WIDTH = 280
+const PICKER_HEIGHT = 260
+const GAP = 6
+const VIEWPORT_MARGIN = 12
 
 /**
- * Emoji picker popup. The common reactions sit in a bar that renders instantly;
- * the full `emoji-picker-element` grid is only imported if the user asks for it.
+ * Emoji picker popup using emoji-picker-react (React-native, production-ready).
+ * The common reactions sit in a bar that renders instantly;
+ * the full picker is shown below for more options.
  */
 export default function EmojiPicker({
   anchorRect,
@@ -30,11 +31,9 @@ export default function EmojiPicker({
   onRemove,
 }: EmojiPickerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const pickerRef = useRef<Picker | null>(null)
   const [expanded, setExpanded] = useState(false)
-  const [loadFailed, setLoadFailed] = useState(false)
 
-  // Kept in a ref so re-renders don't tear down and re-create the loaded picker.
+  // Kept in a ref so re-renders don't tear down and re-create the picker.
   const onEmojiSelectRef = useRef(onEmojiSelect)
   useEffect(() => {
     onEmojiSelectRef.current = onEmojiSelect
@@ -62,62 +61,36 @@ export default function EmojiPicker({
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [onClose])
 
-  // Load the full picker on first expand. It is a sizeable custom element, so
-  // paying for it up front would slow down the quick reactions.
+  // Scroll closes the popup.
   useEffect(() => {
-    if (!expanded || loadFailed) return
-    let cancelled = false
+    const handleScroll = () => onClose()
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [onClose])
 
-    async function loadPicker() {
-      try {
-        const { Picker: EmojiPickerElement } = await import('emoji-picker-element')
-        if (cancelled) return
+  const handleEmojiClick = useCallback((emojiData: EmojiClickData) => {
+    onEmojiSelectRef.current(emojiData.emoji)
+  }, [])
 
-        const picker = new EmojiPickerElement({ locale: 'zh-CN' })
-        picker.addEventListener('emoji-click', event => {
-          // `name` is the emoji's English shortname rather than a character, so
-          // only `unicode` is usable as the stored reaction.
-          const unicode = event.detail.unicode
-          if (unicode) onEmojiSelectRef.current(unicode)
-        })
+  // Position calculations - center below the button
+  const buttonBottom = anchorRect?.bottom ?? 0
+  const buttonLeft = anchorRect?.left ?? 0
+  const buttonWidth = anchorRect?.width ?? 0
 
-        const host = containerRef.current?.querySelector('.emoji-picker-content')
-        if (!host) {
-          cancelled = true
-          return
-        }
+  let top = buttonBottom + GAP
+  let left = buttonLeft + buttonWidth / 2 - PICKER_WIDTH / 2
 
-        host.appendChild(picker)
-        pickerRef.current = picker
-      } catch (err) {
-        console.error('Failed to load the emoji picker', err)
-        setLoadFailed(true)
-      }
-    }
-
-    void loadPicker()
-
-    return () => {
-      cancelled = true
-      pickerRef.current?.remove()
-      pickerRef.current = null
-    }
-  }, [expanded, loadFailed])
-
-  // Anchor above the button when there is not enough room below it.
-  const height = expanded && !loadFailed ? QUICK_BAR_HEIGHT + PICKER_HEIGHT : QUICK_BAR_HEIGHT
-  let top = (anchorRect?.bottom ?? 0) + GAP
-  let left = (anchorRect?.left ?? 0) + (anchorRect?.width ?? 0) / 2 - PICKER_WIDTH / 2
-
-  left = Math.min(
-    Math.max(left, VIEWPORT_MARGIN),
-    Math.max(VIEWPORT_MARGIN, window.innerWidth - PICKER_WIDTH - VIEWPORT_MARGIN),
-  )
-  if (top + height > window.innerHeight - VIEWPORT_MARGIN) {
-    top = Math.max(VIEWPORT_MARGIN, (anchorRect?.top ?? 0) - height - GAP)
+  // Ensure picker stays within viewport
+  if (left < VIEWPORT_MARGIN) left = VIEWPORT_MARGIN
+  if (left + PICKER_WIDTH > window.innerWidth - VIEWPORT_MARGIN) {
+    left = window.innerWidth - PICKER_WIDTH - VIEWPORT_MARGIN
+  }
+  // If not enough room below, show above the button
+  if (top + PICKER_HEIGHT > window.innerHeight - VIEWPORT_MARGIN) {
+    top = (anchorRect?.top ?? 0) - PICKER_HEIGHT - GAP
   }
 
-  return (
+  const picker = (
     <div
       ref={containerRef}
       className="emoji-picker-overlay"
@@ -164,9 +137,23 @@ export default function EmojiPicker({
 
       {expanded && (
         <div className="emoji-picker-content">
-          {loadFailed && <p className="emoji-picker-error">表情库加载失败，请刷新页面重试</p>}
+          <EmojiPickerReact
+            onEmojiClick={handleEmojiClick}
+            theme={Theme.LIGHT}
+            width={PICKER_WIDTH - 16}
+            height={200}
+            emojiVersion="15"
+            searchDisabled
+            skinTonesDisabled
+            previewConfig={{
+              showPreview: false,
+            }}
+          />
         </div>
       )}
     </div>
   )
+
+  // Use portal to render at body level, avoiding parent stacking contexts
+  return createPortal(picker, document.body)
 }

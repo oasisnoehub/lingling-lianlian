@@ -68,8 +68,8 @@ router.post('/', avatarLimiter, (req: Request, res: Response) => {
       return
     }
 
-    // req.personId is set by requireAuth middleware in index.ts
-    const personId = (req as any).personId
+    // req.personId is set by requireAuth middleware
+    const personId = req.personId
     if (!personId) {
       // Clean up uploaded file
       try {
