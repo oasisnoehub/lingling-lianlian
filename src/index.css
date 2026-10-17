@@ -2427,35 +2427,28 @@ button {
 }
 
 .reaction-bubble {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--surface-glass-hover);
-  border: 1.5px solid var(--border-glass-hover);
   animation: reaction-pop 0.22s var(--ease-out);
 }
 
-/* Each person keeps the accent colour their timeline is drawn in. */
 .reaction-bubble-lingling {
-  border-color: rgba(52, 211, 153, 0.75);
-  box-shadow: 0 0 10px rgba(52, 211, 153, 0.25);
+  background: rgba(52, 211, 153, 0.2);
 }
 
 .reaction-bubble-lianlian {
-  border-color: rgba(249, 168, 212, 0.75);
-  box-shadow: 0 0 10px rgba(249, 168, 212, 0.25);
+  background: rgba(249, 168, 212, 0.2);
 }
 
 .reaction-emoji {
-  font-size: 15px;
+  display: inline-block;
+  font-size: 16px;
   line-height: 1;
 }
 
 .reaction-trigger-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 28px;
@@ -2464,10 +2457,10 @@ button {
   background: transparent;
   border: 1.5px dashed var(--border-glass-hover);
   color: var(--text-secondary);
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1;
   cursor: pointer;
-  transition: background 0.18s var(--ease-out), border-color 0.18s var(--ease-out), transform 0.18s var(--ease-out);
+  transition: all 0.15s var(--ease-out);
 }
 
 .reaction-trigger-btn:hover {
@@ -2580,7 +2573,7 @@ button {
   min-height: 0;
   overflow: visible;
   background: #fff;
-  max-height: 220px;
+  max-height: 340px;
   overflow-y: auto;
 }
 

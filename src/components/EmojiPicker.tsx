@@ -16,7 +16,7 @@ interface EmojiPickerProps {
 const QUICK_EMOJIS = ['❤️', '💞', '😂', '🥰', '👍', '😭']
 
 const PICKER_WIDTH = 280
-const PICKER_HEIGHT = 260
+const PICKER_HEIGHT = 340
 const GAP = 6
 const VIEWPORT_MARGIN = 12
 
@@ -145,7 +145,7 @@ export default function EmojiPicker({
             onEmojiClick={handleEmojiClick}
             theme={Theme.LIGHT}
             width={PICKER_WIDTH - 16}
-            height={200}
+            height={320}
             emojiVersion="15"
             searchDisabled
             skinTonesDisabled
