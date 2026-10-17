@@ -118,8 +118,30 @@ try {
 const existingPersons = db.prepare('SELECT COUNT(*) as count FROM persons').get() as { count: number }
 if (existingPersons.count === 0) {
   const insertPerson = db.prepare('INSERT INTO persons (id, name, avatar_color, created_at) VALUES (?, ?, ?, ?)')
-  insertPerson.run('person-a', 'Ling Ling', '#4f8ef7', Date.now())
-  insertPerson.run('person-b', 'Lian Lian', '#B8D4E8', Date.now())
+  insertPerson.run('person-a', 'Lingling', '#4f8ef7', Date.now())
+  insertPerson.run('person-b', 'Lianlian', '#B8D4E8', Date.now())
+}
+
+/**
+ * Canonical display names, keyed by the unchanged person ids.
+ *
+ * `persons.name` is the single source of truth for every user-visible name:
+ * the timeline builds each post's author with a SQL JOIN rather than a stored
+ * copy, so correcting these two rows updates names everywhere at once.
+ */
+const CANONICAL_NAMES: Record<string, string> = {
+  'person-a': 'Lingling',
+  'person-b': 'Lianlian',
+}
+
+/*
+ * Bring databases created before the rename in line. This runs on every start:
+ * it only writes when the stored name actually differs, so it is idempotent,
+ * and it touches the name column alone -- no row is inserted or deleted, ids are
+ * never reassigned, and posts, avatars, media and reactions are left untouched.
+ */
+for (const [id, name] of Object.entries(CANONICAL_NAMES)) {
+  db.prepare('UPDATE persons SET name = ? WHERE id = ? AND name IS NOT ?').run(name, id, name)
 }
 
 // Types

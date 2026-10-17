@@ -21,6 +21,7 @@ import Footer from '../components/Footer'
 import { showToast } from '../components/Toaster'
 import PersonAvatar from '../components/PersonAvatar'
 import AvatarUploader from '../components/AvatarUploader'
+import CountdownSection from '../components/CountdownSection'
 
 /** How often the shared timeline re-fetches, in ms. */
 const REFRESH_INTERVAL = 15000
@@ -300,6 +301,8 @@ function TimelinePage() {
               </div>
             </div>
           </div>
+
+              <CountdownSection />
 
           <PostInput
             currentPerson={currentPerson}

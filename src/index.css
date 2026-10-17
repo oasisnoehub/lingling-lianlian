@@ -2596,3 +2596,192 @@ button {
     transition: none;
   }
 }
+
+/* ==================== BIRTHDAY & GIFT COUNTDOWN ==================== */
+/* One column on phones, two side by side from the project's 481px breakpoint. */
+.countdown-section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+@media (min-width: 481px) {
+  .countdown-section {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+}
+
+.countdown-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(var(--primary-rgb), 0.32);
+  /*
+   * The per-person crystal gradient supplies the fill; the scrim keeps white
+   * text readable across both ends of it, since the gradients run from a near
+   * white highlight to a saturated deep tone.
+   */
+  background-image:
+    linear-gradient(rgba(8, 12, 22, 0.62), rgba(8, 12, 22, 0.62)),
+    var(--person-gradient);
+  color: var(--text-primary);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 4px 18px rgba(0, 0, 0, 0.25);
+  transition: box-shadow 0.4s var(--ease-out), border-color 0.4s var(--ease-out);
+}
+
+/*
+ * The glow is a separate layer rather than an animated box-shadow, so the
+ * animation only touches opacity and stays cheap to composite.
+ */
+.countdown-card::before {
+  content: '';
+  position: absolute;
+  inset: -40% -55%;
+  z-index: -1;
+  border-radius: inherit;
+  background: radial-gradient(closest-side, rgba(var(--person-rgb), 0.6), transparent 72%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s var(--ease-out);
+}
+
+/* Slow ice-blue sheen, in keeping with the crystal styling used elsewhere. */
+.countdown-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--crystal-sheen);
+  opacity: 0.14;
+  pointer-events: none;
+  transform: translateX(-35%);
+  animation: countdown-sheen 9s var(--ease-out) infinite;
+}
+
+.countdown-card-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.countdown-emoji {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.countdown-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.countdown-date {
+  margin-left: auto;
+  padding: 1px 8px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.88);
+  white-space: nowrap;
+}
+
+.countdown-message {
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.countdown-age {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.countdown-badge {
+  align-self: flex-start;
+  padding: 2px 9px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 11px;
+  font-weight: 600;
+  color: #ffffff;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* Near the date: a gentle glow. */
+.countdown-card[data-state='imminent'] {
+  border-color: rgba(var(--person-rgb), 0.65);
+}
+
+.countdown-card[data-state='imminent']::before {
+  opacity: 0.55;
+  animation: countdown-glow 4s ease-in-out infinite;
+}
+
+/* On the day: brighter chrome, and the badge takes over from the date pill. */
+.countdown-card[data-state='today'] {
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.countdown-card[data-state='today']::before {
+  opacity: 0.9;
+  animation: countdown-glow 2.8s ease-in-out infinite;
+}
+
+/* A little extra celebration on the day itself, kept to a static scale so it
+   costs nothing to render. */
+.countdown-card[data-state='today'] .countdown-emoji {
+  font-size: 18px;
+}
+
+.countdown-card[data-state='today'] .countdown-message {
+  font-weight: 700;
+}
+
+@keyframes countdown-sheen {
+  0%,
+  60% {
+    transform: translateX(-35%);
+    opacity: 0.1;
+  }
+  100% {
+    transform: translateX(35%);
+    opacity: 0.24;
+  }
+}
+
+@keyframes countdown-glow {
+  0%,
+  100% {
+    opacity: 0.42;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .countdown-card::before,
+  .countdown-card::after {
+    animation: none;
+  }
+
+  .countdown-card[data-state='imminent']::before,
+  .countdown-card[data-state='today']::before {
+    opacity: 0.6;
+  }
+}
