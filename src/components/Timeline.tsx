@@ -91,7 +91,12 @@ function Timeline({ posts, currentPersonId, onEditPost, onPostsChange }: Timelin
               <div
                 className="timeline-avatar"
               >
-                <PersonAvatar personId={post.author_id} size={40} />
+                <PersonAvatar
+                  personId={post.author_id}
+                  size={40}
+                  avatarUrl={(post.author as any).avatar_url}
+                  avatarUpdatedAt={(post.author as any).avatar_updated_at}
+                />
               </div>
               <div className="timeline-content">
                 <div className="timeline-header">

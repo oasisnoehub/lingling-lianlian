@@ -221,3 +221,19 @@ export function uploadImage(file: File, onProgress?: (percent: number) => void):
 export function uploadVideo(file: File, onProgress?: (percent: number) => void): UploadTask {
   return uploadFile('/upload/video', file, onProgress)
 }
+
+/**
+ * Upload avatar image using XHR for progress reporting.
+ * Avatar files are limited to 2MB and must be JPEG, PNG, or WebP.
+ */
+export interface AvatarUploadResponse {
+  avatar_url: string
+  avatar_updated_at: number
+}
+
+export function uploadAvatar(
+  file: File,
+  onProgress?: (percent: number) => void,
+): UploadTask & { promise: Promise<AvatarUploadResponse> } {
+  return uploadFile('/avatar', file, onProgress) as UploadTask & { promise: Promise<AvatarUploadResponse> }
+}

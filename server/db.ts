@@ -28,6 +28,8 @@ db.exec(`
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     avatar_color TEXT NOT NULL,
+    avatar_url TEXT,
+    avatar_updated_at INTEGER,
     created_at INTEGER NOT NULL
   );
 
@@ -61,6 +63,18 @@ try {
   // Column already exists, ignore
 }
 
+// Add avatar_url and avatar_updated_at columns if they don't exist (for existing databases)
+try {
+  db.exec('ALTER TABLE persons ADD COLUMN avatar_url TEXT')
+} catch (e) {
+  // Column already exists, ignore
+}
+try {
+  db.exec('ALTER TABLE persons ADD COLUMN avatar_updated_at INTEGER')
+} catch (e) {
+  // Column already exists, ignore
+}
+
 // Seed default persons if not exist
 const existingPersons = db.prepare('SELECT COUNT(*) as count FROM persons').get() as { count: number }
 if (existingPersons.count === 0) {
@@ -74,6 +88,8 @@ export interface Person {
   id: string
   name: string
   avatar_color: string
+  avatar_url?: string
+  avatar_updated_at?: number
   created_at: number
 }
 
@@ -126,6 +142,8 @@ export function getTimeline(): PostWithAuthor[] {
       'id', pr.id,
       'name', pr.name,
       'avatar_color', pr.avatar_color,
+      'avatar_url', pr.avatar_url,
+      'avatar_updated_at', pr.avatar_updated_at,
       'created_at', pr.created_at
     ) as author_json
     FROM posts p
@@ -305,6 +323,11 @@ export function deletePost(id: string): boolean {
   }
 
   return true
+}
+
+export function updatePersonAvatar(personId: string, avatarUrl: string, updatedAt: number): boolean {
+  const result = db.prepare('UPDATE persons SET avatar_url = ?, avatar_updated_at = ? WHERE id = ?').run(avatarUrl, updatedAt, personId)
+  return result.changes > 0
 }
 
 /**

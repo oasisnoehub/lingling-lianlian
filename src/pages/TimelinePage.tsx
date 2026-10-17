@@ -18,6 +18,7 @@ import Timeline from '../components/Timeline'
 import Footer from '../components/Footer'
 import { showToast } from '../components/Toaster'
 import PersonAvatar from '../components/PersonAvatar'
+import AvatarUploader from '../components/AvatarUploader'
 
 /** How often the shared timeline re-fetches, in ms. */
 const REFRESH_INTERVAL = 15000
@@ -50,6 +51,7 @@ function TimelinePage() {
   const [posts, setPosts] = useState<PostWithAuthor[]>([])
   const [selectedEmotion, setSelectedEmotion] = useState<string>('')
   const [loading, setLoading] = useState(true)
+  const [showAvatarUploader, setShowAvatarUploader] = useState(false)
 
   // Edit state
   const [editingPost, setEditingPost] = useState<PostWithAuthor | null>(null)
@@ -107,6 +109,25 @@ function TimelinePage() {
         logout()
         navigate('/', { replace: true })
       }
+    }
+  }
+
+  async function handleAvatarUpdated(avatarUrl: string, updatedAt: number) {
+    // Refresh person data to get the new avatar
+    try {
+      const me = await getMe()
+      setCurrentPerson(me)
+      setShowAvatarUploader(false)
+      // Also update the avatar URL locally for immediate refresh
+      if (avatarUrl && currentPerson) {
+        setCurrentPerson(prev => prev ? {
+          ...prev,
+          avatar_url: avatarUrl,
+          avatar_updated_at: updatedAt,
+        } : null)
+      }
+    } catch (err) {
+      console.error('Failed to refresh person data after avatar update:', err)
     }
   }
 
@@ -207,8 +228,16 @@ function TimelinePage() {
           <div className="card-header">
             <div
               className="card-avatar"
+              onClick={() => setShowAvatarUploader(true)}
+              style={{ cursor: 'pointer' }}
+              title="点击更新头像"
             >
-              <PersonAvatar personId={currentPerson.id} size={52} />
+              <PersonAvatar
+                personId={currentPerson.id}
+                size={52}
+                avatarUrl={currentPerson.avatar_url}
+                avatarUpdatedAt={currentPerson.avatar_updated_at}
+              />
             </div>
             <div className="card-header-text">
               <div className="card-header-title">
@@ -248,6 +277,17 @@ function TimelinePage() {
       />
 
       <Footer />
+
+      {showAvatarUploader && currentPerson && (
+        <AvatarUploader
+          personId={currentPerson.id}
+          personName={currentPerson.name}
+          currentAvatarUrl={currentPerson.avatar_url}
+          currentAvatarUpdatedAt={currentPerson.avatar_updated_at}
+          onAvatarUpdated={handleAvatarUpdated}
+          onClose={() => setShowAvatarUploader(false)}
+        />
+      )}
     </div>
   )
 }
