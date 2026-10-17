@@ -1,8 +1,11 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { PostWithAuthor, MediaItem } from '../types'
 import { deletePost } from '../api/client'
 import MediaPreview from './MediaPreview'
 import { showToast } from './Toaster'
+import PersonAvatar from './PersonAvatar'
+import ReactionSelector from './ReactionSelector'
+import { Reaction } from '../api/client'
 
 interface TimelineProps {
   posts: PostWithAuthor[]
@@ -10,7 +13,17 @@ interface TimelineProps {
   currentPersonId: string
   onEditPost: (post: PostWithAuthor) => void
   onPostsChange: () => void
+  /** Reactions per post, keyed by post id. Held by the page so the poller can refresh them. */
+  reactionsByPost: Record<string, Reaction[]>
+  onReactionsChange: (postId: string, next: Reaction[]) => void
+  /** Called when a reaction write starts, so the poller can avoid clobbering it. */
+  onReactionWrite?: () => void
+  /** Display name of the signed-in person, used in reaction tooltips. */
+  currentPersonName?: string
 }
+
+/** Stable empty array, so posts without reactions don't re-render on every poll. */
+const NO_REACTIONS: Reaction[] = []
 
 const emotionMap: Record<string, { emoji: string; label: string }> = {
   happy: { emoji: '😊', label: '开心' },
@@ -42,9 +55,27 @@ function formatTime(timestamp: number): string {
   return timeFormatter.format(new Date(timestamp)).replace(/\//g, '-')
 }
 
-function Timeline({ posts, currentPersonId, onEditPost, onPostsChange }: TimelineProps) {
+function Timeline({
+  posts,
+  currentPersonId,
+  onEditPost,
+  onPostsChange,
+  reactionsByPost,
+  onReactionsChange,
+  onReactionWrite,
+  currentPersonName = '',
+}: TimelineProps) {
   const [previewMedia, setPreviewMedia] = useState<MediaItem | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null)
+
+  // Everyone who can react is either the signed-in person or an author of a post
+  // in this timeline, so the names can be collected without another request.
+  const personNames = useMemo(() => {
+    const names: Record<string, string> = {}
+    if (currentPersonName) names[currentPersonId] = currentPersonName
+    for (const post of posts) names[post.author_id] = post.author.name
+    return names
+  }, [currentPersonId, currentPersonName, posts])
 
   async function handleDelete(postId: string) {
     try {
@@ -89,9 +120,13 @@ function Timeline({ posts, currentPersonId, onEditPost, onPostsChange }: Timelin
             >
               <div
                 className="timeline-avatar"
-                style={{ background: post.author.avatar_color }}
               >
-                {post.author.name.charAt(0)}
+                <PersonAvatar
+                  personId={post.author_id}
+                  size={40}
+                  avatarUrl={(post.author as any).avatar_url}
+                  avatarUpdatedAt={(post.author as any).avatar_updated_at}
+                />
               </div>
               <div className="timeline-content">
                 <div className="timeline-header">
@@ -166,6 +201,16 @@ function Timeline({ posts, currentPersonId, onEditPost, onPostsChange }: Timelin
                       {emotionMap[post.emotion].emoji} {emotionMap[post.emotion].label}
                     </div>
                   )}
+
+                  {/* Reaction selector */}
+                  <ReactionSelector
+                    postId={post.id}
+                    currentPersonId={currentPersonId}
+                    personNames={personNames}
+                    reactions={reactionsByPost[post.id] ?? NO_REACTIONS}
+                    onReactionChange={onReactionsChange}
+                    onReactionWrite={onReactionWrite}
+                  />
                 </div>
               </div>
 

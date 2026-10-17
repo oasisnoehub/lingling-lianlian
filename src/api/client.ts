@@ -221,3 +221,63 @@ export function uploadImage(file: File, onProgress?: (percent: number) => void):
 export function uploadVideo(file: File, onProgress?: (percent: number) => void): UploadTask {
   return uploadFile('/upload/video', file, onProgress)
 }
+
+/**
+ * Upload avatar image using XHR for progress reporting.
+ * Avatar files are limited to 2MB and must be JPEG, PNG, or WebP.
+ */
+export interface AvatarUploadResponse {
+  avatar_url: string
+  avatar_updated_at: number
+}
+
+export function uploadAvatar(
+  file: File,
+  onProgress?: (percent: number) => void,
+): UploadTask & { promise: Promise<AvatarUploadResponse> } {
+  return uploadFile('/avatar', file, onProgress) as UploadTask & { promise: Promise<AvatarUploadResponse> }
+}
+
+export interface Reaction {
+  id: string
+  post_id: string
+  person_id: string
+  emoji: string
+  created_at: number
+  updated_at?: number
+}
+
+export interface ReactionsResponse {
+  reactions: Record<string, Reaction[]>
+}
+
+/**
+ * Get reactions for multiple posts
+ */
+export async function getReactions(postIds: string[]): Promise<Record<string, Reaction[]>> {
+  if (postIds.length === 0) return {}
+  const query = postIds.join(',')
+  const result = await request<ReactionsResponse>(`/reactions?postIds=${encodeURIComponent(query)}`)
+  return result.reactions
+}
+
+/**
+ * Create or update a reaction
+ */
+export async function upsertReaction(postId: string, emoji: string): Promise<Reaction> {
+  const result = await request<{ reaction: Reaction }>('/reactions', {
+    method: 'POST',
+    body: JSON.stringify({ postId, emoji }),
+  })
+  return result.reaction
+}
+
+/**
+ * Delete a reaction
+ */
+export async function deleteReaction(postId: string): Promise<void> {
+  await request<void>('/reactions', {
+    method: 'DELETE',
+    body: JSON.stringify({ postId }),
+  })
+}

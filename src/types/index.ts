@@ -2,6 +2,8 @@ export interface Person {
   id: string;
   name: string;
   avatar_color: string;
+  avatar_url?: string;
+  avatar_updated_at?: number;
   created_at: number;
 }
 

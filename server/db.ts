@@ -22,12 +22,18 @@ const db = new Database(dbPath)
 // Enable WAL mode for better concurrency
 db.pragma('journal_mode = WAL')
 
+// Without this, SQLite parses but never enforces the FOREIGN KEY clauses --
+// so `ON DELETE CASCADE` on reactions would silently do nothing.
+db.pragma('foreign_keys = ON')
+
 // Create tables
 db.exec(`
   CREATE TABLE IF NOT EXISTS persons (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     avatar_color TEXT NOT NULL,
+    avatar_url TEXT,
+    avatar_updated_at INTEGER,
     created_at INTEGER NOT NULL
   );
 
@@ -43,8 +49,22 @@ db.exec(`
     FOREIGN KEY (author_id) REFERENCES persons(id)
   );
 
+  CREATE TABLE IF NOT EXISTS reactions (
+    id TEXT PRIMARY KEY,
+    post_id TEXT NOT NULL,
+    person_id TEXT NOT NULL,
+    emoji TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER,
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+    FOREIGN KEY (person_id) REFERENCES persons(id),
+    UNIQUE(post_id, person_id)
+  );
+
   CREATE INDEX IF NOT EXISTS idx_posts_author ON posts(author_id);
   CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_reactions_post ON reactions(post_id);
+  CREATE INDEX IF NOT EXISTS idx_reactions_person ON reactions(person_id);
 `)
 
 // Add location column if it doesn't exist (for existing databases)
@@ -61,12 +81,70 @@ try {
   // Column already exists, ignore
 }
 
+// Add avatar_url and avatar_updated_at columns if they don't exist (for existing databases)
+try {
+  db.exec('ALTER TABLE persons ADD COLUMN avatar_url TEXT')
+} catch (e) {
+  // Column already exists, ignore
+}
+try {
+  db.exec('ALTER TABLE persons ADD COLUMN avatar_updated_at INTEGER')
+} catch (e) {
+  // Column already exists, ignore
+}
+
+// Add reactions table if it doesn't exist (for existing databases)
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS reactions (
+      id TEXT PRIMARY KEY,
+      post_id TEXT NOT NULL,
+      person_id TEXT NOT NULL,
+      emoji TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER,
+      FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+      FOREIGN KEY (person_id) REFERENCES persons(id),
+      UNIQUE(post_id, person_id)
+    )
+  `)
+  db.exec('CREATE INDEX IF NOT EXISTS idx_reactions_post ON reactions(post_id)')
+  db.exec('CREATE INDEX IF NOT EXISTS idx_reactions_person ON reactions(person_id)')
+} catch (e) {
+  // Table already exists, ignore
+}
+
 // Seed default persons if not exist
 const existingPersons = db.prepare('SELECT COUNT(*) as count FROM persons').get() as { count: number }
 if (existingPersons.count === 0) {
   const insertPerson = db.prepare('INSERT INTO persons (id, name, avatar_color, created_at) VALUES (?, ?, ?, ?)')
-  insertPerson.run('person-a', 'Ling Ling', '#4f8ef7', Date.now())
-  insertPerson.run('person-b', 'Lian Lian', '#64D5FF', Date.now())
+  insertPerson.run('person-a', 'Lingling', '#4f8ef7', Date.now())
+  // `avatar_color` is kept in sync with master, but note that it no longer
+  // paints anything: PersonAvatar derives its crystal green/pink fill from
+  // `data-theme`. The column survives only as legacy data.
+  insertPerson.run('person-b', 'Lianlian', '#64D5FF', Date.now())
+}
+
+/**
+ * Canonical display names, keyed by the unchanged person ids.
+ *
+ * `persons.name` is the single source of truth for every user-visible name:
+ * the timeline builds each post's author with a SQL JOIN rather than a stored
+ * copy, so correcting these two rows updates names everywhere at once.
+ */
+const CANONICAL_NAMES: Record<string, string> = {
+  'person-a': 'Lingling',
+  'person-b': 'Lianlian',
+}
+
+/*
+ * Bring databases created before the rename in line. This runs on every start:
+ * it only writes when the stored name actually differs, so it is idempotent,
+ * and it touches the name column alone -- no row is inserted or deleted, ids are
+ * never reassigned, and posts, avatars, media and reactions are left untouched.
+ */
+for (const [id, name] of Object.entries(CANONICAL_NAMES)) {
+  db.prepare('UPDATE persons SET name = ? WHERE id = ? AND name IS NOT ?').run(name, id, name)
 }
 
 // Types
@@ -74,6 +152,8 @@ export interface Person {
   id: string
   name: string
   avatar_color: string
+  avatar_url?: string
+  avatar_updated_at?: number
   created_at: number
 }
 
@@ -84,6 +164,15 @@ export interface MediaItem {
   thumbnail_url?: string
   width?: number
   height?: number
+}
+
+export interface Reaction {
+  id: string
+  post_id: string
+  person_id: string
+  emoji: string
+  created_at: number
+  updated_at?: number
 }
 
 export interface PostLocation {
@@ -126,6 +215,8 @@ export function getTimeline(): PostWithAuthor[] {
       'id', pr.id,
       'name', pr.name,
       'avatar_color', pr.avatar_color,
+      'avatar_url', pr.avatar_url,
+      'avatar_updated_at', pr.avatar_updated_at,
       'created_at', pr.created_at
     ) as author_json
     FROM posts p
@@ -295,7 +386,14 @@ export function deletePost(id: string): boolean {
     | undefined
   if (!existing) return false
 
-  const result = db.prepare('DELETE FROM posts WHERE id = ?').run(id)
+  // Reactions are removed explicitly as well as by ON DELETE CASCADE, so a
+  // deleted post never leaves rows behind for the other person's timeline.
+  const remove = db.transaction(() => {
+    db.prepare('DELETE FROM reactions WHERE post_id = ?').run(id)
+    return db.prepare('DELETE FROM posts WHERE id = ?').run(id)
+  })
+
+  const result = remove()
   if (result.changes === 0) return false
 
   try {
@@ -305,6 +403,95 @@ export function deletePost(id: string): boolean {
   }
 
   return true
+}
+
+export function updatePersonAvatar(personId: string, avatarUrl: string, updatedAt: number): boolean {
+  const result = db.prepare('UPDATE persons SET avatar_url = ?, avatar_updated_at = ? WHERE id = ?').run(avatarUrl, updatedAt, personId)
+  return result.changes > 0
+}
+
+/**
+ * Get all reactions for a post
+ */
+export function getReactionsByPostId(postId: string): Reaction[] {
+  return db.prepare('SELECT * FROM reactions WHERE post_id = ? ORDER BY created_at ASC').all(postId) as Reaction[]
+}
+
+/**
+ * Get all reactions for multiple posts, grouped by post_id
+ */
+export function getReactionsByPostIds(postIds: string[]): Record<string, Reaction[]> {
+  if (postIds.length === 0) return {}
+  
+  const placeholders = postIds.map(() => '?').join(',')
+  const rows = db.prepare(`
+    SELECT * FROM reactions 
+    WHERE post_id IN (${placeholders})
+    ORDER BY post_id, created_at ASC
+  `).all(...postIds) as Array<Reaction & { post_id: string }>
+  
+  const grouped: Record<string, Reaction[]> = {}
+  for (const row of rows) {
+    const postId = row.post_id
+    if (!grouped[postId]) {
+      grouped[postId] = []
+    }
+    grouped[postId].push({
+      id: row.id,
+      post_id: row.post_id,
+      person_id: row.person_id,
+      emoji: row.emoji,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+    })
+  }
+  
+  return grouped
+}
+
+/**
+ * Upsert a reaction (create or update)
+ * Returns the reaction with its id
+ */
+export function upsertReaction(
+  postId: string,
+  personId: string,
+  emoji: string
+): Reaction {
+  const now = Date.now()
+  const id = `reaction-${now}-${Math.random().toString(36).slice(2, 8)}`
+  
+  // Check if reaction exists
+  const existing = db.prepare('SELECT * FROM reactions WHERE post_id = ? AND person_id = ?').get(postId, personId) as Reaction | undefined
+  
+  if (existing) {
+    // Update existing reaction
+    db.prepare('UPDATE reactions SET emoji = ?, updated_at = ? WHERE post_id = ? AND person_id = ?').run(emoji, now, postId, personId)
+    return {
+      ...existing,
+      emoji,
+      updated_at: now,
+    }
+  } else {
+    // Create new reaction
+    db.prepare('INSERT INTO reactions (id, post_id, person_id, emoji, created_at) VALUES (?, ?, ?, ?, ?)').run(id, postId, personId, emoji, now)
+    return {
+      id,
+      post_id: postId,
+      person_id: personId,
+      emoji,
+      created_at: now,
+      updated_at: undefined,
+    }
+  }
+}
+
+/**
+ * Delete a reaction
+ */
+export function deleteReaction(postId: string, personId: string): boolean {
+  const result = db.prepare('DELETE FROM reactions WHERE post_id = ? AND person_id = ?').run(postId, personId)
+  return result.changes > 0
 }
 
 /**
