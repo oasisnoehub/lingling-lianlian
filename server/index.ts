@@ -10,6 +10,7 @@ import postsRouter from './routes/posts.js'
 import uploadRouter from './routes/upload.js'
 import locationRouter from './routes/location.js'
 import avatarRouter from './routes/avatar.js'
+import reactionsRouter from './routes/reactions.js'
 import { requireAuth } from './auth.js'
 import { closeDatabase, getTimeline, getTimelineETag, UPLOADS_DIR } from './db.js'
 import { startBackupSchedule, stopBackupSchedule } from './backup.js'
@@ -80,6 +81,7 @@ app.use('/api/posts', postsRouter)
 app.use('/api/upload', requireAuth, uploadRouter)
 app.use('/api/location', requireAuth, locationRouter)
 app.use('/api/avatar', requireAuth, avatarRouter)
+app.use('/api/reactions', requireAuth, reactionsRouter)
 
 app.get('/api/timeline', requireAuth, (req, res) => {
   try {
