@@ -140,9 +140,9 @@ export default function ReactionSelector({
         {myReaction ? myReaction.emoji : <span className="reaction-trigger-placeholder">☺</span>}
       </button>
 
-      {showPicker && buttonRef.current && (
+      {showPicker && (
         <EmojiPicker
-          anchorRect={buttonRef.current.getBoundingClientRect()}
+          triggerRef={buttonRef}
           onEmojiSelect={emoji => void handleEmojiSelect(emoji)}
           onRemove={myReaction ? () => void removeReaction() : undefined}
           onClose={() => setShowPicker(false)}

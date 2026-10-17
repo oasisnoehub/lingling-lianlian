@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
+import type { RefObject } from 'react'
 import EmojiPickerReact, { type EmojiClickData, Theme } from 'emoji-picker-react'
 
 interface EmojiPickerProps {
-  /** Viewport rectangle of the button this popup is anchored to. */
-  anchorRect: DOMRect | null
+  /** Reference to the button that triggers this picker */
+  triggerRef: RefObject<HTMLElement>
   onEmojiSelect: (emoji: string) => void
   onClose: () => void
   /** When provided, the popup offers a button to withdraw the current reaction. */
@@ -25,12 +26,13 @@ const VIEWPORT_MARGIN = 12
  * the full picker is shown below for more options.
  */
 export default function EmojiPicker({
-  anchorRect,
+  triggerRef,
   onEmojiSelect,
   onClose,
   onRemove,
 }: EmojiPickerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const [position, setPosition] = useState<{ top: number; left: number } | null>(null)
   const [expanded, setExpanded] = useState(false)
 
   // Kept in a ref so re-renders don't tear down and re-create the picker.
@@ -72,29 +74,31 @@ export default function EmojiPicker({
     onEmojiSelectRef.current(emojiData.emoji)
   }, [])
 
-  // Position calculations - center below the button
-  const buttonBottom = anchorRect?.bottom ?? 0
-  const buttonLeft = anchorRect?.left ?? 0
-  const buttonWidth = anchorRect?.width ?? 0
+  // Calculate position when container is mounted
+  useEffect(() => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect()
+      let top: number
+      let left = rect.left + rect.width / 2 - PICKER_WIDTH / 2
 
-  let top = buttonBottom + GAP
-  let left = buttonLeft + buttonWidth / 2 - PICKER_WIDTH / 2
+      // Ensure left stays within viewport
+      if (left < VIEWPORT_MARGIN) left = VIEWPORT_MARGIN
+      if (left + PICKER_WIDTH > window.innerWidth - VIEWPORT_MARGIN) {
+        left = window.innerWidth - PICKER_WIDTH - VIEWPORT_MARGIN
+      }
 
-  // Ensure picker stays within viewport
-  if (left < VIEWPORT_MARGIN) left = VIEWPORT_MARGIN
-  if (left + PICKER_WIDTH > window.innerWidth - VIEWPORT_MARGIN) {
-    left = window.innerWidth - PICKER_WIDTH - VIEWPORT_MARGIN
-  }
-  // If not enough room below, show above the button
-  if (top + PICKER_HEIGHT > window.innerHeight - VIEWPORT_MARGIN) {
-    top = (anchorRect?.top ?? 0) - PICKER_HEIGHT - GAP
-  }
+      // Default: show directly below the button
+      top = rect.bottom + GAP
 
-  const picker = (
+      setPosition({ top, left })
+    }
+  }, [triggerRef])
+
+  const picker = position ? (
     <div
       ref={containerRef}
       className="emoji-picker-overlay"
-      style={{ top: `${top}px`, left: `${left}px`, width: `${PICKER_WIDTH}px` }}
+      style={{ top: `${position.top}px`, left: `${position.left}px`, width: `${PICKER_WIDTH}px` }}
       role="dialog"
       aria-label="选择表情回应"
     >
@@ -152,7 +156,7 @@ export default function EmojiPicker({
         </div>
       )}
     </div>
-  )
+  ) : null
 
   // Use portal to render at body level, avoiding parent stacking contexts
   return createPortal(picker, document.body)
