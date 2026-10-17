@@ -119,7 +119,10 @@ const existingPersons = db.prepare('SELECT COUNT(*) as count FROM persons').get(
 if (existingPersons.count === 0) {
   const insertPerson = db.prepare('INSERT INTO persons (id, name, avatar_color, created_at) VALUES (?, ?, ?, ?)')
   insertPerson.run('person-a', 'Lingling', '#4f8ef7', Date.now())
-  insertPerson.run('person-b', 'Lianlian', '#B8D4E8', Date.now())
+  // `avatar_color` is kept in sync with master, but note that it no longer
+  // paints anything: PersonAvatar derives its crystal green/pink fill from
+  // `data-theme`. The column survives only as legacy data.
+  insertPerson.run('person-b', 'Lianlian', '#64D5FF', Date.now())
 }
 
 /**
