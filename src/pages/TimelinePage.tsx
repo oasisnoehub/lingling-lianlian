@@ -17,6 +17,7 @@ import PostInput from '../components/PostInput'
 import Timeline from '../components/Timeline'
 import Footer from '../components/Footer'
 import { showToast } from '../components/Toaster'
+import PersonAvatar from '../components/PersonAvatar'
 
 /** How often the shared timeline re-fetches, in ms. */
 const REFRESH_INTERVAL = 15000
@@ -207,7 +208,7 @@ function TimelinePage() {
             <div
               className="card-avatar"
             >
-              {currentPerson.name.charAt(0)}
+              <PersonAvatar personId={currentPerson.id} size={52} />
             </div>
             <div className="card-header-text">
               <div className="card-header-title">

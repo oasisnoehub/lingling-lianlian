@@ -3,6 +3,7 @@ import { PostWithAuthor, MediaItem } from '../types'
 import { deletePost } from '../api/client'
 import MediaPreview from './MediaPreview'
 import { showToast } from './Toaster'
+import PersonAvatar from './PersonAvatar'
 
 interface TimelineProps {
   posts: PostWithAuthor[]
@@ -90,7 +91,7 @@ function Timeline({ posts, currentPersonId, onEditPost, onPostsChange }: Timelin
               <div
                 className="timeline-avatar"
               >
-                {post.author.name.charAt(0)}
+                <PersonAvatar personId={post.author_id} size={40} />
               </div>
               <div className="timeline-content">
                 <div className="timeline-header">

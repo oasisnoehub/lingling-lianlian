@@ -515,6 +515,77 @@ button {
   text-shadow: 0 0 12px rgba(var(--person-rgb), 0.24);
 }
 
+/* ==================== UNIFIED PERSON AVATAR ==================== */
+/* Unified avatar component: fixed colors per person, consistent style */
+.person-avatar-unified {
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #fff;
+  position: relative;
+  border: 2px solid rgba(255, 255, 255, 0.75);
+  flex-shrink: 0;
+}
+
+/* Size variants */
+.person-avatar-unified.avatar-32 {
+  width: 32px;
+  height: 32px;
+  font-size: 12px;
+}
+
+.person-avatar-unified.avatar-40 {
+  width: 40px;
+  height: 40px;
+  font-size: 16px;
+}
+
+.person-avatar-unified.avatar-48 {
+  width: 48px;
+  height: 48px;
+  font-size: 18px;
+}
+
+.person-avatar-unified.avatar-52 {
+  width: 52px;
+  height: 52px;
+  font-size: 20px;
+}
+
+.person-avatar-unified.avatar-56 {
+  width: 56px;
+  height: 56px;
+  font-size: 20px;
+}
+
+.person-avatar-unified.avatar-60 {
+  width: 60px;
+  height: 60px;
+  font-size: 24px;
+}
+
+.person-avatar-unified.avatar-72 {
+  width: 72px;
+  height: 72px;
+  font-size: 28px;
+}
+
+/* Lingling - crystal green */
+.person-avatar-unified[data-theme="lingling"] {
+  background: linear-gradient(135deg, #ECFDF5 0%, #A7F3D0 28%, #34D399 62%, #059669 100%);
+  color: #064E3B;
+  box-shadow: inset 0 2px 2px rgba(255, 255, 255, 0.85), inset 0 -5px 10px rgba(5, 150, 105, 0.22), 0 0 30px rgba(52, 211, 153, 0.4);
+}
+
+/* Lianlian - crystal pink */
+.person-avatar-unified[data-theme="lianlian"] {
+  background: linear-gradient(135deg, #FFF1F7 0%, #FBCFE8 28%, #F9A8D4 62%, #F472B6 100%);
+  color: #831843;
+  box-shadow: inset 0 2px 2px rgba(255, 255, 255, 0.85), inset 0 -5px 10px rgba(244, 114, 182, 0.22), 0 0 30px rgba(249, 168, 212, 0.4);
+}
+
 .person-avatar::after {
   content: '';
   position: absolute;
@@ -668,34 +739,16 @@ button {
 }
 
 .card-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  font-weight: 700;
-  background: var(--person-gradient);
-  color: var(--person-contrast);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.85), inset 0 -4px 8px rgba(var(--person-deep-rgb), 0.2), 0 0 20px rgba(var(--person-rgb), 0.3);
   flex-shrink: 0;
 }
 
 @media (min-width: 481px) {
   .card-avatar {
-    width: 48px;
-    height: 48px;
-    font-size: 18px;
   }
 }
 
 @media (min-width: 768px) {
   .card-avatar {
-    width: 52px;
-    height: 52px;
-    font-size: 20px;
   }
 }
 
@@ -1144,33 +1197,20 @@ button {
   position: absolute;
   left: 0;
   top: 0;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 600;
-  color: #fff;
-  flex-shrink: 0;
   z-index: 1;
   border: 3px solid var(--bg-dark);
 }
 
 @media (min-width: 481px) {
   .timeline-avatar {
-    width: 40px;
-    height: 40px;
-    font-size: 14px;
+    left: 0;
+    top: 0;
     border-width: 4px;
   }
 }
 
 @media (min-width: 768px) {
   .timeline-avatar {
-    width: 44px;
-    height: 44px;
   }
 }
 
@@ -1505,6 +1545,7 @@ button {
   margin-top: 12px;
   border-radius: 12px;
   overflow: hidden;
+  max-width: 100%;
 }
 
 @media (min-width: 481px) {
@@ -1523,60 +1564,74 @@ button {
   }
 }
 
-/* Single image - full width on mobile, max width on larger screens */
+/* Single image - full width, contain fit to avoid cropping */
 .timeline-media-grid.single {
   grid-template-columns: 1fr;
-  max-width: 100%;
+}
+
+.timeline-media-grid.single .timeline-media-item {
+  aspect-ratio: auto;
+  max-height: 420px;
 }
 
 @media (min-width: 481px) {
-  .timeline-media-grid.single {
-    max-width: 360px;
+  .timeline-media-grid.single .timeline-media-item {
+    max-height: 480px;
+    max-width: 420px;
   }
 }
 
-/* Two images - side by side */
+.timeline-media-grid.single img,
+.timeline-media-grid.single video {
+  object-fit: contain;
+}
+
+/* Two images - side by side, equal size */
 .timeline-media-grid.double {
   grid-template-columns: repeat(2, 1fr);
-  max-width: 100%;
 }
 
-@media (min-width: 481px) {
-  .timeline-media-grid.double {
-    max-width: 360px;
-  }
+.timeline-media-grid.double .timeline-media-item {
+  aspect-ratio: 1;
 }
 
-/* Three+ images - grid */
-.timeline-media-grid.triple,
-.timeline-media-grid.multiple {
+/* Three images - main image on left, two smaller on right */
+.timeline-media-grid.triple {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.timeline-media-grid.triple .timeline-media-item:first-child {
+  grid-row: 1 / 3;
+  aspect-ratio: 1;
+}
+
+.timeline-media-grid.triple .timeline-media-item:nth-child(2),
+.timeline-media-grid.triple .timeline-media-item:nth-child(3) {
+  aspect-ratio: 1;
+}
+
+/* Four images - 2x2 grid */
+.timeline-media-grid.multiple:has(.timeline-media-item:nth-child(4)):not(:has(.timeline-media-item:nth-child(5))) {
   grid-template-columns: repeat(2, 1fr);
-  max-width: 100%;
+  grid-template-rows: repeat(2, 1fr);
 }
 
-@media (min-width: 481px) {
-  .timeline-media-grid.triple,
-  .timeline-media-grid.multiple {
-    grid-template-columns: repeat(3, 1fr);
-    max-width: 400px;
-  }
+.timeline-media-grid.multiple:has(.timeline-media-item:nth-child(4)):not(:has(.timeline-media-item:nth-child(5))) .timeline-media-item {
+  aspect-ratio: 1;
 }
 
-/* 3+ images - responsive grid */
-.timeline-media-grid.triple .timeline-media-item:nth-child(3),
-.timeline-media-grid.multiple .timeline-media-item:nth-child(n+3) {
-  grid-column: span 1;
+/* Five or more images - 3 column grid */
+.timeline-media-grid.multiple:has(.timeline-media-item:nth-child(5)) {
+  grid-template-columns: repeat(3, 1fr);
 }
 
-@media (min-width: 481px) {
-  .timeline-media-grid.multiple .timeline-media-item:nth-child(n+4) {
-    grid-column: span 1;
-  }
+.timeline-media-grid.multiple:has(.timeline-media-item:nth-child(5)) .timeline-media-item {
+  aspect-ratio: 1;
 }
 
 .timeline-media-item {
   position: relative;
-  aspect-ratio: 1;
   background: rgba(255, 255, 255, 0.05);
   cursor: pointer;
   overflow: hidden;
@@ -1714,40 +1769,33 @@ button {
 
 /* ==================== MEDIA PREVIEW (Upload) ==================== */
 .media-preview-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   margin-top: 12px;
 }
 
 @media (min-width: 481px) {
   .media-preview-list {
-    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
     gap: 12px;
     margin-top: 14px;
   }
 }
 
-@media (min-width: 768px) {
-  .media-preview-list {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: 12px;
-  }
-}
-
 .media-preview-item {
   position: relative;
-  aspect-ratio: 1;
-  width: 100%;
+  width: 80px;
+  height: 80px;
   border-radius: 12px;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.05);
+  flex-shrink: 0;
 }
 
 @media (min-width: 481px) {
   .media-preview-item {
-    min-width: 90px;
-    max-width: 140px;
+    width: 90px;
+    height: 90px;
     border-radius: 14px;
   }
 }
@@ -1773,12 +1821,22 @@ button {
   color: #fff;
   font-size: 12px;
   cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.15s;
+  opacity: 1;
+  transition: opacity 0.15s, background 0.15s;
+  z-index: 10;
 }
 
-.media-preview-item:hover .media-preview-remove {
-  opacity: 1;
+@media (min-width: 481px) {
+  .media-preview-remove {
+    opacity: 0;
+  }
+  .media-preview-item:hover .media-preview-remove {
+    opacity: 1;
+  }
+}
+
+.media-preview-remove:hover {
+  background: rgba(239, 68, 68, 0.8);
 }
 
 /* Uploading state */
@@ -1868,26 +1926,11 @@ button {
 }
 
 .unlock-avatar {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  font-weight: 600;
-  background: var(--person-gradient);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  box-shadow: inset 0 2px 2px rgba(255, 255, 255, 0.85), inset 0 -4px 8px rgba(var(--person-deep-rgb), 0.2), 0 0 40px var(--person-glow);
-  color: var(--person-contrast);
   margin: 0 auto 14px;
 }
 
 @media (min-width: 481px) {
   .unlock-avatar {
-    width: 56px;
-    height: 56px;
-    font-size: 20px;
     margin-bottom: 16px;
   }
 }

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Footer from '../components/Footer'
 import { getMe, getToken, login } from '../api/client'
 import { showToast } from '../components/Toaster'
+import PersonAvatar from '../components/PersonAvatar'
 
 function HomePage() {
   const navigate = useNavigate()
@@ -103,7 +104,7 @@ function HomePage() {
               data-theme="lingling"
               onClick={() => handlePersonClick('person-a')}
             >
-              <div className="person-avatar">L</div>
+              <PersonAvatar personId="person-a" size={60} />
               <span className="person-name">Lingling</span>
             </div>
             <div
@@ -111,7 +112,7 @@ function HomePage() {
               data-theme="lianlian"
               onClick={() => handlePersonClick('person-b')}
             >
-              <div className="person-avatar">L</div>
+              <PersonAvatar personId="person-b" size={60} />
               <span className="person-name">Lianlian</span>
             </div>
           </div>
@@ -129,7 +130,7 @@ function HomePage() {
           <div className="unlock-modal" onClick={e => e.stopPropagation()}>
             {/* Avatar Circle */}
             <div className="unlock-avatar">
-              {selectedPerson === 'person-a' ? 'L' : 'l'}
+              <PersonAvatar personId={selectedPerson || 'person-a'} size={56} />
             </div>
 
             {/* Name */}
