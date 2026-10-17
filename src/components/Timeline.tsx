@@ -157,16 +157,6 @@ function Timeline({
                     <div className="timeline-text">{post.content}</div>
                   )}
 
-                  {post.location && (
-                    <div className="timeline-location">
-                      <span aria-hidden="true">📍</span>
-                      <span>
-                        {post.location.name ? `${post.location.name} · ` : ''}
-                        {post.location.address}
-                      </span>
-                    </div>
-                  )}
-
                   {post.media.length > 0 && (
                     <div className={`timeline-media-grid ${mediaClass}`}>
                       {post.media.map((item) => (
@@ -193,6 +183,16 @@ function Timeline({
                           )}
                         </div>
                       ))}
+                    </div>
+                  )}
+
+                  {post.location && (
+                    <div className="timeline-location">
+                      <span aria-hidden="true">📍</span>
+                      <span>
+                        {post.location.name ? `${post.location.name} · ` : ''}
+                        {post.location.address}
+                      </span>
                     </div>
                   )}
 

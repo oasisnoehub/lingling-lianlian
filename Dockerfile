@@ -10,7 +10,7 @@ RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 # Use npmmirror for npm
 COPY package.json package-lock.json ./
 RUN npm config set registry https://registry.npmmirror.com && \
-    npm ci
+    npm install
 
 COPY . .
 RUN npm run build
