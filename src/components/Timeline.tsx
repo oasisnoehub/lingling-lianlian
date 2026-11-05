@@ -123,9 +123,9 @@ function Timeline({
               >
                 <PersonAvatar
                   personId={post.author_id}
-                  size={40}
-                  avatarUrl={(post.author as any).avatar_url}
-                  avatarUpdatedAt={(post.author as any).avatar_updated_at}
+                  size={32}
+                  avatarUrl={post.author.avatar_url}
+                  avatarUpdatedAt={post.author.avatar_updated_at}
                 />
               </div>
               <div className="timeline-content">

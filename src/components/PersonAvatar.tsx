@@ -16,7 +16,7 @@ interface PersonAvatarProps {
 /**
  * Unified person avatar component.
  * - person-a / Lingling: crystal green gradient, displays "玲"
- * - person-b / Lianlian: crystal pink gradient, displays "恋"
+ * - person-b / Lianlian: crystal pink gradient, displays "廉"
  *
  * If avatarUrl is provided, shows the custom uploaded image.
  * Otherwise shows the default crystal gradient avatar with initial.
@@ -34,7 +34,7 @@ const PersonAvatar = memo(function PersonAvatar({
   const isLingling = personId === 'person-a'
   const isLianlian = personId === 'person-b'
   const theme = isLingling ? 'lingling' : isLianlian ? 'lianlian' : undefined
-  const initial = isLingling ? '玲' : isLianlian ? '恋' : '?'
+  const initial = isLingling ? '玲' : isLianlian ? '廉' : '?'
 
   const sizeClass = {
     32: 'avatar-32',

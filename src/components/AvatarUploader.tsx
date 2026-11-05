@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { uploadAvatar, type AvatarUploadResponse } from '../api/client'
 import { showToast } from './Toaster'
 
@@ -92,7 +92,8 @@ export default function AvatarUploader({
         onAvatarUpdated(response.avatar_url || '', response.avatar_updated_at || Date.now())
       })
       .catch((err) => {
-        if (err.message && err.message !== '上传已取消') {
+        // 0 = abort error code from xhr.onabort
+        if (err instanceof Error && err.message !== '上传已取消') {
           showToast(err.message, 'error')
         }
       })
@@ -108,13 +109,13 @@ export default function AvatarUploader({
   }, [selectedFile, uploading, previewUrl, onAvatarUpdated])
 
   // Clean up preview URL on unmount
-  useState(() => {
+  useEffect(() => {
     return () => {
       if (previewUrl) {
         URL.revokeObjectURL(previewUrl)
       }
     }
-  })
+  }, [previewUrl])
 
   return (
     <div className="avatar-uploader-overlay" onClick={handleCancel}>
