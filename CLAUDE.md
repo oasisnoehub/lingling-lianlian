@@ -37,6 +37,10 @@ npm run verify       # typecheck + build + smoke
 - `src/pages/TimelinePage.tsx` - Timeline view with post input and feed
 - `src/components/Timeline.tsx` - Timeline feed with edit/delete functionality
 - `src/components/PostInput.tsx` - Input form with emotion selector and media upload
+- `src/components/GiftBox.tsx` - Lingling's gift box: the wrapping comes off one
+  layer per day and the note with the countdown slides out of the box
+- `src/components/GiftBoxArt.tsx` - The box drawing, as separate layers (body,
+  ribbon, lid, wrapping paper, note) so the tear is real movement
 - `src/api/client.ts` - API client for all backend calls
 
 ### Backend (Express + better-sqlite3)
@@ -49,12 +53,20 @@ npm run verify       # typecheck + build + smoke
 - `server/routes/persons.ts` - Person data endpoints
 - `server/routes/upload.ts` - Image/video upload via multer
 - `server/routes/location.ts` - Amap GPS->GCJ02 conversion + reverse geocoding
+- `server/routes/gift.ts` - Reading and tearing the gift box
+- `server/gift.ts` - How much wrapping is off: derived from the day of the
+  first tear, so both people and every device agree
+- `server/dates.ts` - Asia/Shanghai civil-date helpers (a mirror of
+  `src/utils/countdown.ts`; the two trees cannot share a module)
 
 ### Key Paths
 - The built frontend is located by probing for `dist/index.html` around
   `__dirname` and `process.cwd()`, so any build layout works (the image runs
   from `/app/dist/server`)
 - Database: `data/posts.db` (SQLite WAL mode)
+- Gift progress lives in the same database: `gift_progress` holds the day of
+  the first tear and `gift_opens` one row per day the wrapping was torn, so
+  the box is the same for both people and on every device
 - Uploads: `uploads/` directory (served at `/uploads`)
 - Frontend build: `dist/` (Vite output)
 
@@ -73,6 +85,8 @@ All except `/api/auth/*` require an `Authorization: Bearer <token>` header.
 | `POST /api/upload/image` | Upload image (MIME-whitelisted) |
 | `POST /api/upload/video` | Upload video (MIME-whitelisted) |
 | `GET /api/location/reverse` | Amap reverse geocoding |
+| `GET /api/gift` | State of the gift box (how much wrapping is off) |
+| `POST /api/gift/open` | Tear the wrapping; one tear per day |
 | `GET /api/health` | Unauthenticated liveness probe (Docker HEALTHCHECK) |
 
 ### Required environment variables
