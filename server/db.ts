@@ -65,6 +65,22 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at DESC);
   CREATE INDEX IF NOT EXISTS idx_reactions_post ON reactions(post_id);
   CREATE INDEX IF NOT EXISTS idx_reactions_person ON reactions(person_id);
+
+  -- The gift box: gift_progress holds the anchor date of the very first tear,
+  -- gift_opens one row per day the wrapping was torn. Both are shared by the
+  -- two people, so neither table is keyed by a person id.
+  CREATE TABLE IF NOT EXISTS gift_progress (
+    gift_id TEXT PRIMARY KEY,
+    anchor_date TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS gift_opens (
+    gift_id TEXT NOT NULL,
+    open_date TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (gift_id, open_date)
+  );
 `)
 
 // Add location column if it doesn't exist (for existing databases)

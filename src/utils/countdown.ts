@@ -1,5 +1,5 @@
 /*
- * Countdown maths for the birthday and gift cards.
+ * Countdown maths for the gift box.
  *
  * Everything works on *civil dates in Asia/Shanghai* rather than on instants,
  * so a countdown never shifts by a day depending on where the browser is. China
@@ -70,24 +70,14 @@ export interface OccasionConfig {
   month: number
   /** 1-31 */
   day: number
-  /** Used only to project an age for birthday countdowns. */
-  birthYear: number
-  kind: 'gift' | 'birthday'
 }
 
 export interface Countdown {
   /** 0 when the occasion falls today. */
   days: number
-  /** Age being turned on the upcoming birthday; null for gift countdowns. */
-  age: number | null
   isToday: boolean
-  /** Within a week, counting today itself as day 0. */
-  isImminent: boolean
   target: CivilDate
 }
-
-/** How close counts as "imminent" for the glow. */
-export const IMMINENT_DAYS = 7
 
 export function resolveCountdown(config: OccasionConfig, now: Date): Countdown {
   const today = shanghaiCivilDate(now)
@@ -96,9 +86,7 @@ export function resolveCountdown(config: OccasionConfig, now: Date): Countdown {
 
   return {
     days,
-    age: config.kind === 'birthday' ? target.year - config.birthYear : null,
     isToday: days === 0,
-    isImminent: days >= 0 && days <= IMMINENT_DAYS,
     target,
   }
 }

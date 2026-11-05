@@ -8,6 +8,7 @@ import { spawn } from 'node:child_process'
 import { rmSync, existsSync, readdirSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import Database from 'better-sqlite3'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const PORT = Number(process.env.SMOKE_PORT || 3997)
@@ -51,6 +52,12 @@ async function login(personId, password) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ personId, password }),
   })
+}
+
+/** The Shanghai calendar date, worked out without asking the server. */
+function shanghaiDateKey(daysAgo = 0) {
+  const shifted = new Date(Date.now() + 8 * 3600 * 1000 - daysAgo * 86400000)
+  return shifted.toISOString().slice(0, 10)
 }
 
 const server = spawn(process.execPath, [join(ROOT, 'dist/server/index.js')], {
@@ -234,6 +241,67 @@ async function run() {
   section('rate limit')
   const burst = await Promise.all(Array.from({ length: 30 }, () => login('person-a', 'wrong')))
   check('brute force throttled', burst.some(r => r.status === 429))
+
+  section('gift box')
+  check('gift state without a token -> 401', (await req('/api/gift')).status === 401)
+  check('tearing without a token -> 401',
+    (await req('/api/gift/open', { method: 'POST' })).status === 401)
+
+  const giftBefore = await req('/api/gift', { headers: { Authorization: 'Bearer ' + tokenA } })
+  check('gift state -> 200', giftBefore.status === 200)
+  check('an unopened box has no anchor date', giftBefore.json?.state?.anchorDate === null)
+  check('an unopened box is at stage 0', giftBefore.json?.state?.stage === 0)
+  check('the state says how many layers the box has',
+    typeof giftBefore.json?.state?.maxStage === 'number' && giftBefore.json.state.maxStage > 0)
+  check('the server counts days in Asia/Shanghai',
+    giftBefore.json?.state?.today === shanghaiDateKey(),
+    'got ' + giftBefore.json?.state?.today)
+
+  const firstTear = await req('/api/gift/open', { method: 'POST', headers: authA })
+  check('the first tear of the day -> 200', firstTear.status === 200)
+  check('the first tear says it tore', firstTear.json?.justOpened === true)
+  check('the first tear anchors the box to today',
+    firstTear.json?.state?.anchorDate === shanghaiDateKey())
+  check('the first tear takes one layer off', firstTear.json?.state?.stage === 1)
+
+  const secondTear = await req('/api/gift/open', { method: 'POST', headers: authA })
+  check('a second tear the same day is not a new tear', secondTear.json?.justOpened === false)
+  check('a second tear does not peel any more', secondTear.json?.state?.stage === 1)
+
+  const otherView = await req('/api/gift', { headers: { Authorization: 'Bearer ' + tokenB } })
+  check('the other person sees the same box', otherView.json?.state?.stage === 1)
+  check('the other person sees the same anchor',
+    otherView.json?.state?.anchorDate === shanghaiDateKey())
+  const otherTear = await req('/api/gift/open', { method: 'POST', headers: authB })
+  check('the other person cannot peel a second layer on the same day',
+    otherTear.json?.justOpened === false && otherTear.json?.state?.stage === 1)
+
+  // Missing a few days must not lose progress, so the box is moved back four
+  // days and today's tear is taken away again.
+  const db = new Database(join(ROOT, '.smoke-data/posts.db'))
+  db.prepare('UPDATE gift_progress SET anchor_date = ? WHERE gift_id = ?')
+    .run(shanghaiDateKey(4), 'lingling-gift')
+  db.prepare('DELETE FROM gift_opens WHERE open_date = ?').run(shanghaiDateKey())
+  db.close()
+
+  const caughtUp = await req('/api/gift', { headers: { Authorization: 'Bearer ' + tokenA } })
+  check('four missed days are made up for', caughtUp.json?.state?.stage === 4,
+    'got ' + caughtUp.json?.state?.stage)
+  check('today still counts as not torn yet', caughtUp.json?.state?.openedToday === false)
+
+  const catchUpTear = await req('/api/gift/open', { method: 'POST', headers: authA })
+  check('tearing after a gap catches up with today',
+    catchUpTear.json?.state?.stage === 5, 'got ' + catchUpTear.json?.state?.stage)
+
+  section('date maths')
+  const serverDates = await import('../dist/server/dates.js')
+  check('the server date matches Asia/Shanghai', serverDates.todayKey(new Date()) === shanghaiDateKey())
+  check('a day is a day', serverDates.daysBetweenKeys('2026-01-11', '2026-01-12') === 1)
+  check('a month is not a month', serverDates.daysBetweenKeys('2026-01-11', '2026-02-11') === 31)
+  check('a leap day counts', serverDates.daysBetweenKeys('2028-02-28', '2028-03-01') === 2)
+  check('the count can go backwards', serverDates.daysBetweenKeys('2026-01-12', '2026-01-11') === -1)
+  check('a broken date counts as no days at all',
+    serverDates.daysBetweenKeys('not-a-date', '2026-01-11') === 0)
 
   section('health + backup')
   const health = await req('/api/health')

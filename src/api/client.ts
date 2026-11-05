@@ -281,3 +281,44 @@ export async function deleteReaction(postId: string): Promise<void> {
     body: JSON.stringify({ postId }),
   })
 }
+
+/* ------------------------------------------------------------------ */
+/* Gift box                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The state of Lingling's gift box.
+ *
+ * The server owns this state: the progress has to survive a reload, a device
+ * change and the other person's timeline, so it is derived there from the day
+ * of the first tear rather than counted in the browser.
+ */
+export interface GiftState {
+  /** The day of the first tear, as "YYYY-MM-DD" in Asia/Shanghai. */
+  anchorDate: string | null
+  /** Whether the wrapping has already been torn today. */
+  openedToday: boolean
+  /** Days between the anchor and today. */
+  elapsedDays: number
+  /** How much wrapping is off, 0..maxStage. */
+  stage: number
+  /** The number of layers the box has. */
+  maxStage: number
+  /** Today in Asia/Shanghai, as "YYYY-MM-DD". */
+  today: string
+}
+
+export async function getGiftState(): Promise<GiftState> {
+  const result = await request<{ state: GiftState }>('/gift')
+  return result.state
+}
+
+/**
+ * Tear the wrapping a little further.
+ *
+ * Idempotent within a day: `justOpened` is false when the wrapping had
+ * already been torn today, so a repeat click only re-reads the countdown.
+ */
+export async function openGift(): Promise<{ state: GiftState; justOpened: boolean }> {
+  return request<{ state: GiftState; justOpened: boolean }>('/gift/open', { method: 'POST' })
+}
