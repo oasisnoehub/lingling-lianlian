@@ -239,7 +239,8 @@ export default function GiftBox({ config, now }: GiftBoxProps) {
     if (state?.openedToday) setNoteOpen(true)
 
     try {
-      tearsBeforeRef.current = tears
+      // A tear that is already being made must not be restarted from nothing.
+      if (!tearing) tearsBeforeRef.current = tears
       const result = await openGift(config.giftId)
       localUpdateAt.current = Date.now()
       applyState(result.state, true)
@@ -250,9 +251,10 @@ export default function GiftBox({ config, now }: GiftBoxProps) {
         if (tearTimer.current !== undefined) window.clearTimeout(tearTimer.current)
         tearTimer.current = window.setTimeout(() => {
           setTearing(false)
+          setPhase('idle')
           tearsBeforeRef.current = undefined
         }, 1100)
-      } else {
+      } else if (!tearing) {
         // Already torn today: the click only reads the countdown again.
         tearsBeforeRef.current = undefined
       }

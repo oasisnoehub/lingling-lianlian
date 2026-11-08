@@ -406,6 +406,46 @@ async function run() {
     repaired.json?.state?.anchorDate === shanghaiDateKey(),
     'got ' + repaired.json?.state?.anchorDate)
 
+  // An anchor that has not happened yet is just as broken as one that cannot
+  // be read: it would put the whole cycle in the future and undo every tear of
+  // the day, so the box is treated as one that has never been opened.
+  const db4 = new Database(join(ROOT, '.smoke-data/posts.db'))
+  db4.prepare('UPDATE gift_progress SET anchor_date = ? WHERE gift_id = ?')
+    .run('2099-01-01', 'lingling-gift')
+  db4.close()
+
+  const future = await req('/api/gift/lingling-gift', { headers: { Authorization: 'Bearer ' + tokenA } })
+  check('an anchor in the future is a box that has never been opened',
+    future.json?.state?.anchorDate === null && future.json?.state?.cycleStart === null,
+    'got ' + future.json?.state?.anchorDate)
+  check('an anchor in the future leaves the paper untouched',
+    future.json?.state?.progress === 0,
+    'got ' + future.json?.state?.progress)
+
+  const futureRepaired = await req('/api/gift/lingling-gift/open', { method: 'POST', headers: authA })
+  check('opening the box puts a future anchor back',
+    futureRepaired.json?.state?.anchorDate === shanghaiDateKey(),
+    'got ' + futureRepaired.json?.state?.anchorDate)
+  const futureAgain = await req('/api/gift/lingling-gift/open', { method: 'POST', headers: authA })
+  check('a future anchor does not tear the paper again and again',
+    futureAgain.json?.justOpened === false,
+    'got ' + futureAgain.json?.justOpened)
+
+  // A cycle of a single day still has to be finished on the day of the gift:
+  // the whole of the paper comes off then, however short the cycle was.
+  process.env.DATA_DIR = join(ROOT, '.smoke-data')
+  process.env.UPLOADS_DIR = join(ROOT, '.smoke-uploads')
+  const giftModule = await import('../dist/server/gift.js')
+  const db5 = new Database(join(ROOT, '.smoke-data/posts.db'))
+  db5.prepare('UPDATE gift_progress SET anchor_date = ? WHERE gift_id = ?')
+    .run('2026-01-10', 'lingling-gift')
+  db5.close()
+
+  const oneDay = giftModule.getGiftState('lingling-gift', new Date('2026-01-11T04:00:00Z'))
+  check('a cycle of one day is one day long', oneDay.cycleDays === 1, 'got ' + oneDay.cycleDays)
+  check('a cycle of one day is finished on the day of the gift',
+    oneDay.progress === 1, 'got ' + oneDay.progress)
+
   section('date maths')
   const serverDates = await import('../dist/server/dates.js')
   check('the server date matches Asia/Shanghai', serverDates.todayKey(new Date()) === shanghaiDateKey())

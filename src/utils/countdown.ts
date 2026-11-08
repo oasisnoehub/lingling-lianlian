@@ -107,7 +107,9 @@ export function resolveCountdown(config: OccasionConfig, now: Date): Countdown {
  * from the date it sends.
  */
 export function countdownToTarget(target: CivilDate, now: Date): Countdown {
-  const days = daysBetween(shanghaiCivilDate(now), target)
+  // A day that has already passed counts as today rather than as a day gone
+  // by: the target can be a moment behind, right after the day rolls over.
+  const days = Math.max(0, daysBetween(shanghaiCivilDate(now), target))
   return {
     days,
     isToday: days === 0,

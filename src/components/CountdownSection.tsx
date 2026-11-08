@@ -43,7 +43,7 @@ export default function CountdownSection() {
   return (
     <section className="countdown-section" aria-label="礼物倒计时">
       {PERSON_DATES.map(config => (
-        <GiftBox key={config.personId} config={config} now={now} />
+        <GiftBox key={config.giftId} config={config} now={now} />
       ))}
     </section>
   )

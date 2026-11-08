@@ -79,15 +79,26 @@ export interface GiftOpenResult {
   justOpened: boolean
 }
 
+/**
+ * Whether an anchor can be believed.
+ *
+ * An anchor that cannot be read, or one that has not happened yet, is treated
+ * as if the box had never been opened: a broken row must not make the box look
+ * unwrapped, and an anchor in the future would put the whole cycle in the
+ * future and undo every tear of the day.
+ */
+function isUsableAnchor(anchor: string | undefined, today: string): boolean {
+  if (!anchor || !parseDateKey(anchor)) return false
+  return anchor <= today
+}
+
 /** The stored anchor of a box, or null if it has never been opened. */
-function getAnchorDate(giftId: string): string | null {
+function getAnchorDate(giftId: string, today: string): string | null {
   const row = db.prepare('SELECT anchor_date FROM gift_progress WHERE gift_id = ?').get(giftId) as
     | { anchor_date: string }
     | undefined
   if (!row) return null
-  // A date that cannot be read is treated as if the box had never been
-  // opened, so one broken row cannot make the box look unwrapped.
-  return parseDateKey(row.anchor_date) ? row.anchor_date : null
+  return isUsableAnchor(row.anchor_date, today) ? row.anchor_date : null
 }
 
 function hasOpenedOn(giftId: string, date: string): boolean {
@@ -155,7 +166,7 @@ function currentCycle(
  */
 export function getGiftState(giftId: string, now: Date = new Date()): GiftState {
   const today = todayKey(now)
-  const anchorDate = getAnchorDate(giftId)
+  const anchorDate = getAnchorDate(giftId, today)
   const openedToday = hasOpenedOn(giftId, today)
   const cycle = currentCycle(giftId, anchorDate, shanghaiCivilDate(now))
 
@@ -164,11 +175,12 @@ export function getGiftState(giftId: string, now: Date = new Date()): GiftState 
 
   // Today's tear counts, so the paper comes off when the box is tapped.
   const torn = elapsedDays + (openedToday ? 1 : 0)
-  // A box that has never been opened has no paper off it at all; a cycle that
-  // opened on the gift day itself is over at once.
+  // A box that has never been opened has no paper off it at all. On the day
+  // the gift is due the whole of the paper is off, whatever the length of the
+  // cycle -- a cycle of a single day would otherwise never be finished.
   const progress = !cycle.start
     ? 0
-    : cycleDays <= 0
+    : elapsedDays >= cycleDays
       ? 1
       : Math.max(0, Math.min(1, (Math.min(torn, cycleDays) - 1) / Math.max(1, cycleDays - 1)))
 
@@ -195,7 +207,7 @@ export function getGiftState(giftId: string, now: Date = new Date()): GiftState 
 export function openGift(giftId: string, now: Date = new Date()): GiftOpenResult {
   const today = todayKey(now)
   const stamp = now.getTime()
-  const cycle = currentCycle(giftId, getAnchorDate(giftId), shanghaiCivilDate(now))
+  const cycle = currentCycle(giftId, getAnchorDate(giftId, today), shanghaiCivilDate(now))
 
   // The anchor and today's tear are written together, so a failure can never
   // leave an anchor without the tear it was created for.
@@ -204,9 +216,9 @@ export function openGift(giftId: string, now: Date = new Date()): GiftOpenResult
       .prepare('SELECT anchor_date FROM gift_progress WHERE gift_id = ?')
       .get(giftId) as { anchor_date: string } | undefined
 
-    // A box that has never been opened, or whose anchor cannot be read, is
+    // A box that has never been opened, or whose anchor cannot be believed, is
     // anchored to today.
-    if (!stored || !parseDateKey(stored.anchor_date)) {
+    if (!stored || !isUsableAnchor(stored.anchor_date, today)) {
       db.prepare(
         `INSERT INTO gift_progress (gift_id, anchor_date, created_at) VALUES (?, ?, ?)
          ON CONFLICT(gift_id) DO UPDATE SET anchor_date = excluded.anchor_date`
