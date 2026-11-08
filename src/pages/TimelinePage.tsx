@@ -302,7 +302,7 @@ function TimelinePage() {
             </div>
           </div>
 
-              <CountdownSection />
+              <CountdownSection currentPersonId={currentPerson.id} />
 
           <PostInput
             currentPerson={currentPerson}

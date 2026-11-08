@@ -10,8 +10,15 @@ import GiftBox from './GiftBox'
  * browser's local midnight, so the box updates on its own no matter where
  * the device is or which timezone it reports.
  */
-export default function CountdownSection() {
+export default function CountdownSection({ currentPersonId }: { currentPersonId?: string }) {
   const [now, setNow] = useState(() => new Date())
+
+  // The box of the person who is logged in comes first; the other one follows.
+  const boxes = currentPersonId
+    ? [...PERSON_DATES].sort(
+        (a, b) => Number(b.personId === currentPersonId) - Number(a.personId === currentPersonId)
+      )
+    : PERSON_DATES
 
   useEffect(() => {
     let timer: number | undefined
@@ -42,7 +49,7 @@ export default function CountdownSection() {
 
   return (
     <section className="countdown-section" aria-label="礼物倒计时">
-      {PERSON_DATES.map(config => (
+      {boxes.map(config => (
         <GiftBox key={config.giftId} config={config} now={now} />
       ))}
     </section>
