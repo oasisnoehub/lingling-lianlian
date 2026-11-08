@@ -60,6 +60,36 @@ function shanghaiDateKey(daysAgo = 0) {
   return shifted.toISOString().slice(0, 10)
 }
 
+/** Whole days from one date key to another. */
+function daysBetweenKeys(from, to) {
+  return Math.round((Date.parse(to + 'T00:00:00Z') - Date.parse(from + 'T00:00:00Z')) / 86400000)
+}
+
+/**
+ * The gift date of the cycle that is running now: the first 11 January on or
+ * after today. Worked out here, without the server, so the test can state
+ * what the server owes it.
+ */
+function giftTargetKey() {
+  const shifted = new Date(Date.now() + 8 * 3600 * 1000)
+  const year = shifted.getUTCFullYear()
+  const todayUtc = Date.UTC(year, shifted.getUTCMonth(), shifted.getUTCDate())
+  const thisYear = Date.UTC(year, 0, 11)
+  const target = todayUtc > thisYear ? Date.UTC(year + 1, 0, 11) : thisYear
+  return new Date(target).toISOString().slice(0, 10)
+}
+
+/** The day a new cycle starts: the day after the gift date before this one. */
+function cycleStartKey() {
+  const targetYear = Number(giftTargetKey().slice(0, 4))
+  return new Date(Date.UTC(targetYear - 1, 0, 11) + 86400000).toISOString().slice(0, 10)
+}
+
+/** The later of two date keys. */
+function laterKey(a, b) {
+  return a > b ? a : b
+}
+
 const server = spawn(process.execPath, [join(ROOT, 'dist/server/index.js')], {
   cwd: ROOT,
   env: {
@@ -250,9 +280,12 @@ async function run() {
   const giftBefore = await req('/api/gift', { headers: { Authorization: 'Bearer ' + tokenA } })
   check('gift state -> 200', giftBefore.status === 200)
   check('an unopened box has no anchor date', giftBefore.json?.state?.anchorDate === null)
-  check('an unopened box is at stage 0', giftBefore.json?.state?.stage === 0)
-  check('the state says how many layers the box has',
-    typeof giftBefore.json?.state?.maxStage === 'number' && giftBefore.json.state.maxStage > 0)
+  check('an unopened box has no cycle', giftBefore.json?.state?.cycleStart === null)
+  check('an unopened box has torn nothing',
+    giftBefore.json?.state?.elapsedDays === 0 && giftBefore.json?.state?.cycleDays === 0)
+  check('the state says when the gift is due',
+    giftBefore.json?.state?.targetDate === giftTargetKey(),
+    'got ' + giftBefore.json?.state?.targetDate)
   check('the server counts days in Asia/Shanghai',
     giftBefore.json?.state?.today === shanghaiDateKey(),
     'got ' + giftBefore.json?.state?.today)
@@ -262,19 +295,28 @@ async function run() {
   check('the first tear says it tore', firstTear.json?.justOpened === true)
   check('the first tear anchors the box to today',
     firstTear.json?.state?.anchorDate === shanghaiDateKey())
-  check('the first tear takes one layer off', firstTear.json?.state?.stage === 1)
+  check('the first tear starts the cycle today',
+    firstTear.json?.state?.cycleStart === shanghaiDateKey())
+  check('the first tear has torn nothing yet',
+    firstTear.json?.state?.elapsedDays === 0)
+  check('the cycle runs to the gift date',
+    firstTear.json?.state?.cycleDays ===
+      daysBetweenKeys(shanghaiDateKey(), giftTargetKey()),
+    'got ' + firstTear.json?.state?.cycleDays)
 
   const secondTear = await req('/api/gift/open', { method: 'POST', headers: authA })
   check('a second tear the same day is not a new tear', secondTear.json?.justOpened === false)
-  check('a second tear does not peel any more', secondTear.json?.state?.stage === 1)
+  check('a second tear does not peel any more',
+    secondTear.json?.state?.elapsedDays === 0)
 
   const otherView = await req('/api/gift', { headers: { Authorization: 'Bearer ' + tokenB } })
-  check('the other person sees the same box', otherView.json?.state?.stage === 1)
+  check('the other person sees the same box',
+    otherView.json?.state?.cycleStart === shanghaiDateKey())
   check('the other person sees the same anchor',
     otherView.json?.state?.anchorDate === shanghaiDateKey())
   const otherTear = await req('/api/gift/open', { method: 'POST', headers: authB })
   check('the other person cannot peel a second layer on the same day',
-    otherTear.json?.justOpened === false && otherTear.json?.state?.stage === 1)
+    otherTear.json?.justOpened === false && otherTear.json?.state?.elapsedDays === 0)
 
   // Missing a few days must not lose progress, so the box is moved back four
   // days and today's tear is taken away again.
@@ -284,14 +326,43 @@ async function run() {
   db.prepare('DELETE FROM gift_opens WHERE open_date = ?').run(shanghaiDateKey())
   db.close()
 
+  // The cycle starts on the later of the anchor and the day after the last
+  // gift date, so the box is never torn further back than it was.
+  const caughtUpStart = laterKey(shanghaiDateKey(4), cycleStartKey())
   const caughtUp = await req('/api/gift', { headers: { Authorization: 'Bearer ' + tokenA } })
-  check('four missed days are made up for', caughtUp.json?.state?.stage === 4,
-    'got ' + caughtUp.json?.state?.stage)
+  check('four missed days are made up for',
+    caughtUp.json?.state?.elapsedDays === daysBetweenKeys(caughtUpStart, shanghaiDateKey()),
+    'got ' + caughtUp.json?.state?.elapsedDays)
+  check('the cycle starts where it should',
+    caughtUp.json?.state?.cycleStart === caughtUpStart,
+    'got ' + caughtUp.json?.state?.cycleStart)
   check('today still counts as not torn yet', caughtUp.json?.state?.openedToday === false)
 
   const catchUpTear = await req('/api/gift/open', { method: 'POST', headers: authA })
   check('tearing after a gap catches up with today',
-    catchUpTear.json?.state?.stage === 5, 'got ' + catchUpTear.json?.state?.stage)
+    catchUpTear.json?.state?.openedToday === true &&
+      catchUpTear.json?.state?.elapsedDays === daysBetweenKeys(caughtUpStart, shanghaiDateKey()),
+    'got ' + catchUpTear.json?.state?.elapsedDays)
+
+  // Once the gift date has passed the wrapping starts again, so the box counts
+  // down to the next year's gift instead of snapping back to half-torn.
+  const db2 = new Database(join(ROOT, '.smoke-data/posts.db'))
+  db2.prepare('UPDATE gift_progress SET anchor_date = ? WHERE gift_id = ?')
+    .run(shanghaiDateKey(400), 'lingling-gift')
+  db2.close()
+
+  const newCycle = await req('/api/gift', { headers: { Authorization: 'Bearer ' + tokenA } })
+  check('a new cycle starts the day after the last gift date',
+    newCycle.json?.state?.cycleStart === cycleStartKey(),
+    'got ' + newCycle.json?.state?.cycleStart)
+  check('the new cycle counts towards the next gift',
+    newCycle.json?.state?.targetDate === giftTargetKey(),
+    'got ' + newCycle.json?.state?.targetDate)
+  check('the new cycle has not been torn yet',
+    newCycle.json?.state?.elapsedDays === daysBetweenKeys(cycleStartKey(), shanghaiDateKey()),
+    'got ' + newCycle.json?.state?.elapsedDays)
+  check('the new cycle is shorter than the days that are left',
+    newCycle.json?.state?.elapsedDays < newCycle.json?.state?.cycleDays)
 
   section('date maths')
   const serverDates = await import('../dist/server/dates.js')
@@ -302,6 +373,15 @@ async function run() {
   check('the count can go backwards', serverDates.daysBetweenKeys('2026-01-12', '2026-01-11') === -1)
   check('a broken date counts as no days at all',
     serverDates.daysBetweenKeys('not-a-date', '2026-01-11') === 0)
+  check('a day can be added to a date',
+    serverDates.addDays({ year: 2026, month: 1, day: 11 }, 1).day === 12)
+  check('the last day of a month is handled',
+    serverDates.addDays({ year: 2026, month: 1, day: 31 }, 1).month === 2)
+  check('a date that does not exist is not a date',
+    serverDates.parseDateKey('2026-02-31') === null)
+  check('a leap day is a date', serverDates.parseDateKey('2028-02-29') !== null)
+  check('a leap day is not a date in an ordinary year',
+    serverDates.parseDateKey('2026-02-29') === null)
 
   section('health + backup')
   const health = await req('/api/health')

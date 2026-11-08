@@ -296,14 +296,16 @@ export async function deleteReaction(postId: string): Promise<void> {
 export interface GiftState {
   /** The day of the first tear, as "YYYY-MM-DD" in Asia/Shanghai. */
   anchorDate: string | null
+  /** The day this cycle's wrapping started, as "YYYY-MM-DD". */
+  cycleStart: string | null
+  /** The day this cycle's gift is due, as "YYYY-MM-DD". */
+  targetDate: string
   /** Whether the wrapping has already been torn today. */
   openedToday: boolean
-  /** Days between the anchor and today. */
+  /** Days from the start of the cycle to today. */
   elapsedDays: number
-  /** How much wrapping is off, 0..maxStage. */
-  stage: number
-  /** The number of layers the box has. */
-  maxStage: number
+  /** The length of the cycle in days. */
+  cycleDays: number
   /** Today in Asia/Shanghai, as "YYYY-MM-DD". */
   today: string
 }

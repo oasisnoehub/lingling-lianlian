@@ -83,7 +83,7 @@ app.use('/api/upload', requireAuth, uploadRouter)
 app.use('/api/location', requireAuth, locationRouter)
 app.use('/api/avatar', requireAuth, avatarRouter)
 app.use('/api/reactions', requireAuth, reactionsRouter)
-app.use('/api/gift', requireAuth, giftRouter)
+app.use('/api/gift', giftRouter)
 
 app.get('/api/timeline', requireAuth, (req, res) => {
   try {

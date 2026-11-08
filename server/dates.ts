@@ -52,7 +52,34 @@ export function parseDateKey(key: string): CivilDate | null {
   const month = Number(match[2])
   const day = Number(match[3])
   if (month < 1 || month > 12 || day < 1 || day > 31) return null
+  // The date has to exist: 31 February is not a day.
+  const probe = new Date(Date.UTC(year, month - 1, day))
+  if (
+    probe.getUTCFullYear() !== year ||
+    probe.getUTCMonth() !== month - 1 ||
+    probe.getUTCDate() !== day
+  ) {
+    return null
+  }
   return { year, month, day }
+}
+
+/** Whole days from one date to another; negative when `to` is earlier. */
+export function daysBetween(from: CivilDate, to: CivilDate): number {
+  const fromUtc = Date.UTC(from.year, from.month - 1, from.day)
+  const toUtc = Date.UTC(to.year, to.month - 1, to.day)
+  return Math.round((toUtc - fromUtc) / MS_PER_DAY)
+}
+
+/** The date a number of days after this one. */
+export function addDays(date: CivilDate, days: number): CivilDate {
+  const stamp = Date.UTC(date.year, date.month - 1, date.day) + days * MS_PER_DAY
+  const shifted = new Date(stamp)
+  return {
+    year: shifted.getUTCFullYear(),
+    month: shifted.getUTCMonth() + 1,
+    day: shifted.getUTCDate(),
+  }
 }
 
 /**

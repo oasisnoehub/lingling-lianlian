@@ -1,15 +1,29 @@
 import db from './db.js'
-import { daysBetweenKeys, todayKey } from './dates.js'
+import {
+  addDays,
+  daysBetween,
+  daysBetweenKeys,
+  shanghaiCivilDate,
+  toDateKey,
+  todayKey,
+  type CivilDate,
+} from './dates.js'
 
 /*
  * The gift box that fills Lingling's countdown slot.
  *
- * The wrapping paper comes off one layer per day, and the layer that is due
- * on a given day is a function of the calendar rather than of how often
- * somebody happened to visit: the day of the very first tear is stored as the
- * anchor, and every later day earns one more layer. Missing a few days
- * therefore loses no progress -- the next tear simply skips ahead to where
- * the box should be by then.
+ * The wrapping paper comes off a little every day, and how much is off is a
+ * function of the calendar rather than of how often somebody happened to
+ * visit: the day of the very first tear is stored as the anchor, and the
+ * paper is torn further as the days go by. Missing a few days therefore loses
+ * no progress -- the next tear simply skips ahead to where the box should be
+ * by then.
+ *
+ * The work is done in cycles. A cycle runs from the day its wrapping starts
+ * to the day the gift is due, and it starts on the day the box was first
+ * opened. Once the gift date has passed the wrapping starts again the next
+ * day, so the box counts down to the next year's gift rather than snapping
+ * back to half-torn.
  *
  * The state lives on the server rather than in the browser so a reload, a
  * different device and the other person's timeline all see the same box.
@@ -17,20 +31,27 @@ import { daysBetweenKeys, todayKey } from './dates.js'
 
 export const GIFT_ID = 'lingling-gift'
 
-/** How many layers of wrapping paper the box has. */
-export const GIFT_MAX_STAGE = 5
+/**
+ * The day the gift is due. The client keeps the same date in
+ * src/config/personDates.ts; the two trees cannot share a module, so the two
+ * copies have to be kept in step.
+ */
+const GIFT_MONTH = 1
+const GIFT_DAY = 11
 
 export interface GiftState {
   /** The day of the first tear, or null while the box has never been opened. */
   anchorDate: string | null
+  /** The day this cycle's wrapping started, or null before the first tear. */
+  cycleStart: string | null
+  /** The day this cycle's gift is due. */
+  targetDate: string
   /** Whether the box has already been torn open today. */
   openedToday: boolean
-  /** Days between the anchor and today. */
+  /** Days from the start of the cycle to today. */
   elapsedDays: number
-  /** How much wrapping is off, 0..maxStage. */
-  stage: number
-  /** The number of layers, so a client never has to hard-code it. */
-  maxStage: number
+  /** The length of the cycle in days. */
+  cycleDays: number
   /** Today in Asia/Shanghai, as a date key. */
   today: string
 }
@@ -55,6 +76,36 @@ function hasOpenedOn(date: string): boolean {
   return row !== undefined
 }
 
+/** The gift date in a given year. */
+function giftDateOf(year: number): CivilDate {
+  return { year, month: GIFT_MONTH, day: GIFT_DAY }
+}
+
+/** The first gift date on or after the given date. */
+function nextGiftDate(from: CivilDate): CivilDate {
+  const thisYear = giftDateOf(from.year)
+  return daysBetween(from, thisYear) >= 0 ? thisYear : giftDateOf(from.year + 1)
+}
+
+/**
+ * The cycle the box is in right now.
+ *
+ * The cycle ends at the next gift date. It starts on the day the box was
+ * first opened, unless a gift date has passed since then -- then it starts on
+ * the day after that gift date, so the wrapping begins again instead of the
+ * box jumping back to how much was torn a year ago.
+ */
+function currentCycle(anchorDate: string | null, today: CivilDate): { start: string | null; target: string } {
+  const target = nextGiftDate(today)
+  const targetKey = toDateKey(target)
+  if (!anchorDate) return { start: null, target: targetKey }
+
+  // The day after the gift date before this one: where a new cycle begins.
+  const naturalStart = toDateKey(addDays(giftDateOf(target.year - 1), 1))
+  const start = daysBetweenKeys(anchorDate, naturalStart) > 0 ? naturalStart : anchorDate
+  return { start, target: targetKey }
+}
+
 /**
  * The box's current state, derived from the stored anchor and today's date.
  *
@@ -65,13 +116,20 @@ export function getGiftState(now: Date = new Date()): GiftState {
   const today = todayKey(now)
   const anchorDate = getAnchorDate()
   const openedToday = hasOpenedOn(today)
-  const elapsedDays = anchorDate ? Math.max(0, daysBetweenKeys(anchorDate, today)) : 0
+  const cycle = currentCycle(anchorDate, shanghaiCivilDate(now))
 
-  // Today's tear adds one layer on top of the layers the calendar has already
-  // earned, so the box is one step further along once it has been opened.
-  const stage = Math.min(openedToday ? elapsedDays + 1 : elapsedDays, GIFT_MAX_STAGE)
+  const elapsedDays = cycle.start ? Math.max(0, daysBetweenKeys(cycle.start, today)) : 0
+  const cycleDays = cycle.start ? Math.max(0, daysBetweenKeys(cycle.start, cycle.target)) : 0
 
-  return { anchorDate, openedToday, elapsedDays, stage, maxStage: GIFT_MAX_STAGE, today }
+  return {
+    anchorDate,
+    cycleStart: cycle.start,
+    targetDate: cycle.target,
+    openedToday,
+    elapsedDays,
+    cycleDays,
+    today,
+  }
 }
 
 /**

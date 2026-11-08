@@ -54,8 +54,9 @@ npm run verify       # typecheck + build + smoke
 - `server/routes/upload.ts` - Image/video upload via multer
 - `server/routes/location.ts` - Amap GPS->GCJ02 conversion + reverse geocoding
 - `server/routes/gift.ts` - Reading and tearing the gift box
-- `server/gift.ts` - How much wrapping is off: derived from the day of the
-  first tear, so both people and every device agree
+- `server/gift.ts` - How much wrapping is off: the work is done in cycles, one
+  per gift date, so the paper is torn the same amount for both people and on
+  every device, and a new cycle starts the day after a gift date passes
 - `server/dates.ts` - Asia/Shanghai civil-date helpers (a mirror of
   `src/utils/countdown.ts`; the two trees cannot share a module)
 
@@ -67,6 +68,9 @@ npm run verify       # typecheck + build + smoke
 - Gift progress lives in the same database: `gift_progress` holds the day of
   the first tear and `gift_opens` one row per day the wrapping was torn, so
   the box is the same for both people and on every device
+- The gift date lives in two places that cannot share a module: `GIFT_MONTH`
+  and `GIFT_DAY` in `server/gift.ts`, and the same month and day in
+  `src/config/personDates.ts`
 - Uploads: `uploads/` directory (served at `/uploads`)
 - Frontend build: `dist/` (Vite output)
 

@@ -43,14 +43,23 @@ function artStateFor(isGiftDay: boolean): GiftArtState {
  * The calendar decides how far along the paper is, not how often somebody
  * happened to visit, so the box is torn the same amount for both people and
  * on every device.
+ *
+ * The length of the cycle and how far into it today is come from the server,
+ * so the paper never jumps back to half-torn when the gift date passes and
+ * the wrapping starts again for the next year.
  */
-function tearCount(state: GiftState | null, daysToGift: number): number {
-  if (!state?.anchorDate) return 0
+function tearCount(state: GiftState | null, asGiftDay = false): number {
+  if (!state?.cycleStart) return 0
 
-  // The days from the first tear to the day of the gift.
-  const total = Math.max(1, state.elapsedDays + daysToGift)
+  // The days from the start of the cycle to the day of the gift.
+  const total = state.cycleDays
+  // The box was opened for the first time on the gift day itself: the whole
+  // of the paper is off.
+  if (total <= 0) return TEAR_SPOTS.length
+
   // Today's tear counts, so the paper comes off when the box is tapped.
-  const torn = state.elapsedDays + (state.openedToday ? 1 : 0)
+  const elapsed = asGiftDay ? total : state.elapsedDays
+  const torn = elapsed + (asGiftDay || state.openedToday ? 1 : 0)
   if (torn <= 0) return 0
 
   const beyond = (Math.min(torn, total) - 1) / Math.max(1, total - 1)
@@ -91,9 +100,13 @@ function previewTearing(): boolean {
  * box. It only moves the picture, the tears and the number on the note -- the
  * shared progress is left exactly as it is.
  */
+function previewGiftDay(): boolean {
+  if (typeof window === 'undefined') return false
+  return new URLSearchParams(window.location.search).get('giftday') === '1'
+}
+
 function previewCountdown(countdown: Countdown): Countdown {
-  if (typeof window === 'undefined') return countdown
-  if (new URLSearchParams(window.location.search).get('giftday') !== '1') return countdown
+  if (!previewGiftDay()) return countdown
   return { days: 0, isToday: true, target: countdown.target }
 }
 
@@ -124,6 +137,7 @@ export default function GiftBox({ config, countdown: realCountdown }: GiftBoxPro
   const boxRef = useRef<HTMLButtonElement>(null)
   const previewState = useMemo(() => previewArtState(), [])
   const previewTearCount = useMemo(() => previewTears(), [])
+  const giftDayPreview = useMemo(() => previewGiftDay(), [])
 
   // A poll that was already on its way when the paper was torn can come back
   // with the older state, so a local change is stamped and stale answers are
@@ -135,7 +149,6 @@ export default function GiftBox({ config, countdown: realCountdown }: GiftBoxPro
 
   /** The day the gift is due: the box stands wide open. */
   const isGiftDay = countdown.isToday
-  const stage = state?.stage ?? 0
 
   // On the day the box stands open, and stays open for the rest of the day.
   const celebrating = isGiftDay && (noteOpen || state?.openedToday === true)
@@ -145,14 +158,16 @@ export default function GiftBox({ config, countdown: realCountdown }: GiftBoxPro
   const artState = previewState ?? artStateFor(isGiftDay)
 
   // How much paper is off the box, in tears.
-  const tears = previewTearCount ?? tearCount(state, countdown.days)
+  const tears = previewTearCount ?? tearCount(state, giftDayPreview)
 
   const applyState = useCallback((next: GiftState, local = false) => {
     if (!local && Date.now() - localUpdateAt.current < 5000) return
     setState(prev => {
       if (!prev) return next
-      // The progress never walks backwards.
-      if (next.stage < prev.stage) return prev
+      // An answer from an earlier day, or one that has not seen today's tear
+      // yet, must not undo a tear that has already been made.
+      if (next.today < prev.today) return prev
+      if (next.today === prev.today && !next.openedToday && prev.openedToday) return prev
       return next
     })
   }, [])
@@ -210,14 +225,6 @@ export default function GiftBox({ config, countdown: realCountdown }: GiftBoxPro
   async function handleClick() {
     if (busy) return
 
-    // Already torn today: the click only reads the countdown again.
-    if (state?.openedToday) {
-      setPhase('peek')
-      setNoteOpen(true)
-      if (isGiftDay) setBurst(value => value + 1)
-      return
-    }
-
     setBusy(true)
     try {
       tearsBeforeRef.current = tears
@@ -236,6 +243,7 @@ export default function GiftBox({ config, countdown: realCountdown }: GiftBoxPro
       } else {
         // Already torn today: the click only reads the countdown again.
         setPhase('peek')
+        tearsBeforeRef.current = undefined
       }
       setNoteOpen(true)
       if (isGiftDay) setBurst(value => value + 1)
@@ -252,7 +260,6 @@ export default function GiftBox({ config, countdown: realCountdown }: GiftBoxPro
     <section
       className="gift-panel"
       data-theme={config.theme}
-      data-stage={stage}
       data-state={artState}
       data-phase={phase}
       data-celebrate={celebrating ? 'true' : 'false'}
