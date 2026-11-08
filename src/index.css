@@ -2683,6 +2683,20 @@ button {
   color: rgba(255, 255, 255, 0.42);
 }
 
+/*
+ * Lianlian's box is the same painting in pink.
+ *
+ * The picture is worked out in one colour first and then turned to the pink of
+ * the lianlian theme, so the folds, the paper and the ribbon keep being
+ * lighter and darker parts of the same colour and the painting still reads as
+ * a painting rather than as a flat colour. The torn paper is tinted with it,
+ * so a tear does not leave a scrap of blue behind.
+ */
+.gift-panel[data-theme='lianlian'] .gift-art-layer,
+.gift-panel[data-theme='lianlian'] .gift-tear {
+  filter: sepia(1) saturate(4) hue-rotate(295deg);
+}
+
 .gift-box {
   position: relative;
   /* The box is painted over the note, so the note can come out from behind
