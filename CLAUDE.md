@@ -38,7 +38,10 @@ npm run verify       # typecheck + build + smoke
 - `src/components/Timeline.tsx` - Timeline feed with edit/delete functionality
 - `src/components/PostInput.tsx` - Input form with emotion selector and media upload
 - `src/components/GiftBox.tsx` - Lingling's gift box: the wrapping comes off one
-  layer per day and the note with the countdown slides out of the box
+  layer per day and the note with the countdown slides out of the box. The
+  server owns the calendar (`progress`, 0..1) and the client owns the picture
+  (`TEAR_SPOTS` in `GiftBoxArt`), so the number of tears stays a fact about
+  the painting
 - `src/components/GiftBoxArt.tsx` - The box drawing, as separate layers (body,
   ribbon, lid, wrapping paper, note) so the tear is real movement
 - `src/api/client.ts` - API client for all backend calls
@@ -68,9 +71,10 @@ npm run verify       # typecheck + build + smoke
 - Gift progress lives in the same database: `gift_progress` holds the day of
   the first tear and `gift_opens` one row per day the wrapping was torn, so
   the box is the same for both people and on every device
-- The gift date lives in two places that cannot share a module: `GIFT_MONTH`
-  and `GIFT_DAY` in `server/gift.ts`, and the same month and day in
-  `src/config/personDates.ts`
+- The gift date lives in two places that cannot share a module: the `GIFTS`
+  table in `server/gift.ts`, and the same month and day in
+  `src/config/personDates.ts`. A second box is a second entry in both: an id
+  in `GIFTS` and a `giftId` in `PERSON_DATES` that names it
 - Uploads: `uploads/` directory (served at `/uploads`)
 - Frontend build: `dist/` (Vite output)
 
@@ -89,8 +93,8 @@ All except `/api/auth/*` require an `Authorization: Bearer <token>` header.
 | `POST /api/upload/image` | Upload image (MIME-whitelisted) |
 | `POST /api/upload/video` | Upload video (MIME-whitelisted) |
 | `GET /api/location/reverse` | Amap reverse geocoding |
-| `GET /api/gift` | State of the gift box (how much wrapping is off) |
-| `POST /api/gift/open` | Tear the wrapping; one tear per day |
+| `GET /api/gift/:giftId` | State of a gift box (how much wrapping is off) |
+| `POST /api/gift/:giftId/open` | Tear the wrapping; one tear per day |
 | `GET /api/health` | Unauthenticated liveness probe (Docker HEALTHCHECK) |
 
 ### Required environment variables

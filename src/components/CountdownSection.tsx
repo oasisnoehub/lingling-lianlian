@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { PERSON_DATES } from '../config/personDates'
-import { msUntilNextShanghaiMidnight, resolveCountdown } from '../utils/countdown'
+import { msUntilNextShanghaiMidnight } from '../utils/countdown'
 import GiftBox from './GiftBox'
 
 /**
@@ -42,10 +42,9 @@ export default function CountdownSection() {
 
   return (
     <section className="countdown-section" aria-label="礼物倒计时">
-      {PERSON_DATES.map(config => {
-        const countdown = resolveCountdown(config, now)
-        return <GiftBox key={config.personId} config={config} countdown={countdown} />
-      })}
+      {PERSON_DATES.map(config => (
+        <GiftBox key={config.personId} config={config} now={now} />
+      ))}
     </section>
   )
 }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { PersonDateConfig } from '../config/personDates'
-import type { Countdown } from '../utils/countdown'
+import { countdownToTarget, parseDateKey, resolveCountdown, type Countdown } from '../utils/countdown'
 import { getGiftState, openGift, type GiftState } from '../api/client'
 import { showToast } from './Toaster'
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion'
@@ -8,7 +8,8 @@ import GiftBoxArt, { GiftConfetti, TEAR_SPOTS, type GiftArtState } from './GiftB
 
 interface GiftBoxProps {
   config: PersonDateConfig
-  countdown: Countdown
+  /** The time the countdown is worked out from. */
+  now: Date
 }
 
 /** How often the shared state is re-read, so both people watch the same box. */
@@ -36,6 +37,18 @@ function artStateFor(isGiftDay: boolean): GiftArtState {
 }
 
 /**
+ * The countdown to the gift.
+ *
+ * The server decides when the gift is due, so the countdown follows the date
+ * it sends. The date in the configuration is only a fallback for the moments
+ * before the server has answered.
+ */
+function countdownFor(state: GiftState | null, config: PersonDateConfig, now: Date): Countdown {
+  const target = state?.targetDate ? parseDateKey(state.targetDate) : null
+  return target ? countdownToTarget(target, now) : resolveCountdown(config, now)
+}
+
+/**
  * How much of the wrapping paper is off the box, in tears.
  *
  * The first tear is the one the painter drew, and the rest follow it along
@@ -44,26 +57,19 @@ function artStateFor(isGiftDay: boolean): GiftArtState {
  * happened to visit, so the box is torn the same amount for both people and
  * on every device.
  *
- * The length of the cycle and how far into it today is come from the server,
- * so the paper never jumps back to half-torn when the gift date passes and
- * the wrapping starts again for the next year.
+ * How far along the cycle today is comes from the server as a share between
+ * 0 and 1; how many tears that is along the ribbon is a fact about the
+ * painting, so it is counted here.
  */
 function tearCount(state: GiftState | null, asGiftDay = false): number {
   if (!state?.cycleStart) return 0
 
-  // The days from the start of the cycle to the day of the gift.
-  const total = state.cycleDays
-  // The box was opened for the first time on the gift day itself: the whole
-  // of the paper is off.
-  if (total <= 0) return TEAR_SPOTS.length
-
   // Today's tear counts, so the paper comes off when the box is tapped.
-  const elapsed = asGiftDay ? total : state.elapsedDays
-  const torn = elapsed + (asGiftDay || state.openedToday ? 1 : 0)
+  const torn = state.elapsedDays + (state.openedToday ? 1 : 0)
   if (torn <= 0) return 0
 
-  const beyond = (Math.min(torn, total) - 1) / Math.max(1, total - 1)
-  return 1 + beyond * (TEAR_SPOTS.length - 1)
+  const progress = asGiftDay ? 1 : state.progress
+  return 1 + progress * (TEAR_SPOTS.length - 1)
 }
 
 /**
@@ -122,12 +128,10 @@ function previewCountdown(countdown: Countdown): Countdown {
  * reload, another device and the other person's timeline all agree, and a
  * few days away skip ahead instead of losing progress.
  */
-export default function GiftBox({ config, countdown: realCountdown }: GiftBoxProps) {
-  // The preview may show the last day, so the box reads one countdown.
-  const countdown = previewCountdown(realCountdown)
+export default function GiftBox({ config, now }: GiftBoxProps) {
   const [state, setState] = useState<GiftState | null>(null)
   const [noteOpen, setNoteOpen] = useState(false)
-  const [phase, setPhase] = useState<'idle' | 'tear' | 'peek'>('idle')
+  const [phase, setPhase] = useState<'idle' | 'tear'>('idle')
   const [burst, setBurst] = useState(0)
   const [busy, setBusy] = useState(false)
   /** True while today's tear is being made. */
@@ -146,6 +150,10 @@ export default function GiftBox({ config, countdown: realCountdown }: GiftBoxPro
   /** How much paper was off before today's tear, so the new one opens out of it. */
   const tearsBeforeRef = useRef<number | undefined>(undefined)
   const tearTimer = useRef<number | undefined>(undefined)
+
+  // The countdown the box shows: the server's day of the gift, or the date in
+  // the configuration until the server has answered.
+  const countdown = previewCountdown(countdownFor(state, config, now))
 
   /** The day the gift is due: the box stands wide open. */
   const isGiftDay = countdown.isToday
@@ -174,11 +182,11 @@ export default function GiftBox({ config, countdown: realCountdown }: GiftBoxPro
 
   const refresh = useCallback(async () => {
     try {
-      applyState(await getGiftState())
+      applyState(await getGiftState(config.giftId))
     } catch {
       /* The box still works without the shared state; it just stays local. */
     }
-  }, [applyState])
+  }, [applyState, config.giftId])
 
   useEffect(() => {
     void refresh()
@@ -226,9 +234,13 @@ export default function GiftBox({ config, countdown: realCountdown }: GiftBoxPro
     if (busy) return
 
     setBusy(true)
+    // When the paper is already off the note can slide out at once: the server
+    // is only asked to confirm, not to be waited for.
+    if (state?.openedToday) setNoteOpen(true)
+
     try {
       tearsBeforeRef.current = tears
-      const result = await openGift()
+      const result = await openGift(config.giftId)
       localUpdateAt.current = Date.now()
       applyState(result.state, true)
       if (result.justOpened) {
@@ -242,7 +254,6 @@ export default function GiftBox({ config, countdown: realCountdown }: GiftBoxPro
         }, 1100)
       } else {
         // Already torn today: the click only reads the countdown again.
-        setPhase('peek')
         tearsBeforeRef.current = undefined
       }
       setNoteOpen(true)

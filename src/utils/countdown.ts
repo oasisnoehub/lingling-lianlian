@@ -38,12 +38,12 @@ export function daysBetween(from: CivilDate, to: CivilDate): number {
 }
 
 /** Whether a month/day pair exists in that year (29 February only in leap years). */
-function isRealDate(year: number, month: number, day: number): boolean {
-  const probe = new Date(Date.UTC(year, month - 1, day))
+function isRealDate(date: CivilDate): boolean {
+  const probe = new Date(Date.UTC(date.year, date.month - 1, date.day))
   return (
-    probe.getUTCFullYear() === year &&
-    probe.getUTCMonth() === month - 1 &&
-    probe.getUTCDate() === day
+    probe.getUTCFullYear() === date.year &&
+    probe.getUTCMonth() === date.month - 1 &&
+    probe.getUTCDate() === date.day
   )
 }
 
@@ -57,12 +57,21 @@ function isRealDate(year: number, month: number, day: number): boolean {
 export function nextOccurrence(today: CivilDate, month: number, day: number): CivilDate {
   // Eight years always covers the worst case for 29 February (a 4-year gap).
   for (let year = today.year; year <= today.year + 8; year++) {
-    if (!isRealDate(year, month, day)) continue
+    if (!isRealDate({ year, month, day })) continue
     const candidate = { year, month, day }
     if (daysBetween(today, candidate) >= 0) return candidate
   }
   // Unreachable for any real month/day; keeps the return type honest.
   return { year: today.year + 1, month, day }
+}
+
+/** "2026-01-11" -- the form every date the server sends comes in. */
+export function parseDateKey(key: string): CivilDate | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key)
+  if (!match) return null
+  const date = { year: Number(match[1]), month: Number(match[2]), day: Number(match[3]) }
+  if (date.month < 1 || date.month > 12 || date.day < 1 || date.day > 31) return null
+  return isRealDate(date) ? date : null
 }
 
 export interface OccasionConfig {
@@ -84,6 +93,21 @@ export function resolveCountdown(config: OccasionConfig, now: Date): Countdown {
   const target = nextOccurrence(today, config.month, config.day)
   const days = daysBetween(today, target)
 
+  return {
+    days,
+    isToday: days === 0,
+    target,
+  }
+}
+
+/**
+ * A countdown to a day that is already known, rather than looked up.
+ *
+ * The server decides when the gift is due, so the countdown is worked out
+ * from the date it sends.
+ */
+export function countdownToTarget(target: CivilDate, now: Date): Countdown {
+  const days = daysBetween(shanghaiCivilDate(now), target)
   return {
     days,
     isToday: days === 0,

@@ -273,16 +273,22 @@ async function run() {
   check('brute force throttled', burst.some(r => r.status === 429))
 
   section('gift box')
-  check('gift state without a token -> 401', (await req('/api/gift')).status === 401)
+  check('gift state without a token -> 401', (await req('/api/gift/lingling-gift')).status === 401)
   check('tearing without a token -> 401',
-    (await req('/api/gift/open', { method: 'POST' })).status === 401)
+    (await req('/api/gift/lingling-gift/open', { method: 'POST' })).status === 401)
+  check('a box that does not exist -> 404',
+    (await req('/api/gift/no-such-gift', { headers: authA })).status === 404)
+  check('opening a box that does not exist -> 404',
+    (await req('/api/gift/no-such-gift/open', { method: 'POST', headers: authA })).status === 404)
 
-  const giftBefore = await req('/api/gift', { headers: { Authorization: 'Bearer ' + tokenA } })
+  const giftBefore = await req('/api/gift/lingling-gift', { headers: { Authorization: 'Bearer ' + tokenA } })
   check('gift state -> 200', giftBefore.status === 200)
+  check('the state says which box it is', giftBefore.json?.state?.giftId === 'lingling-gift')
   check('an unopened box has no anchor date', giftBefore.json?.state?.anchorDate === null)
   check('an unopened box has no cycle', giftBefore.json?.state?.cycleStart === null)
   check('an unopened box has torn nothing',
     giftBefore.json?.state?.elapsedDays === 0 && giftBefore.json?.state?.cycleDays === 0)
+  check('an unopened box has torn no paper', giftBefore.json?.state?.progress === 0)
   check('the state says when the gift is due',
     giftBefore.json?.state?.targetDate === giftTargetKey(),
     'got ' + giftBefore.json?.state?.targetDate)
@@ -290,7 +296,7 @@ async function run() {
     giftBefore.json?.state?.today === shanghaiDateKey(),
     'got ' + giftBefore.json?.state?.today)
 
-  const firstTear = await req('/api/gift/open', { method: 'POST', headers: authA })
+  const firstTear = await req('/api/gift/lingling-gift/open', { method: 'POST', headers: authA })
   check('the first tear of the day -> 200', firstTear.status === 200)
   check('the first tear says it tore', firstTear.json?.justOpened === true)
   check('the first tear anchors the box to today',
@@ -299,22 +305,25 @@ async function run() {
     firstTear.json?.state?.cycleStart === shanghaiDateKey())
   check('the first tear has torn nothing yet',
     firstTear.json?.state?.elapsedDays === 0)
+  check('the first tear takes the first piece of paper off',
+    firstTear.json?.state?.progress === 0,
+    'got ' + firstTear.json?.state?.progress)
   check('the cycle runs to the gift date',
     firstTear.json?.state?.cycleDays ===
       daysBetweenKeys(shanghaiDateKey(), giftTargetKey()),
     'got ' + firstTear.json?.state?.cycleDays)
 
-  const secondTear = await req('/api/gift/open', { method: 'POST', headers: authA })
+  const secondTear = await req('/api/gift/lingling-gift/open', { method: 'POST', headers: authA })
   check('a second tear the same day is not a new tear', secondTear.json?.justOpened === false)
   check('a second tear does not peel any more',
     secondTear.json?.state?.elapsedDays === 0)
 
-  const otherView = await req('/api/gift', { headers: { Authorization: 'Bearer ' + tokenB } })
+  const otherView = await req('/api/gift/lingling-gift', { headers: { Authorization: 'Bearer ' + tokenB } })
   check('the other person sees the same box',
     otherView.json?.state?.cycleStart === shanghaiDateKey())
   check('the other person sees the same anchor',
     otherView.json?.state?.anchorDate === shanghaiDateKey())
-  const otherTear = await req('/api/gift/open', { method: 'POST', headers: authB })
+  const otherTear = await req('/api/gift/lingling-gift/open', { method: 'POST', headers: authB })
   check('the other person cannot peel a second layer on the same day',
     otherTear.json?.justOpened === false && otherTear.json?.state?.elapsedDays === 0)
 
@@ -329,7 +338,13 @@ async function run() {
   // The cycle starts on the later of the anchor and the day after the last
   // gift date, so the box is never torn further back than it was.
   const caughtUpStart = laterKey(shanghaiDateKey(4), cycleStartKey())
-  const caughtUp = await req('/api/gift', { headers: { Authorization: 'Bearer ' + tokenA } })
+  /** How much of the paper should be off, this many days into the cycle. */
+  const caughtUpProgress = (extra = 0) => {
+    const elapsed = daysBetweenKeys(caughtUpStart, shanghaiDateKey())
+    const cycle = daysBetweenKeys(caughtUpStart, giftTargetKey())
+    return (Math.min(elapsed + extra, cycle) - 1) / (cycle - 1)
+  }
+  const caughtUp = await req('/api/gift/lingling-gift', { headers: { Authorization: 'Bearer ' + tokenA } })
   check('four missed days are made up for',
     caughtUp.json?.state?.elapsedDays === daysBetweenKeys(caughtUpStart, shanghaiDateKey()),
     'got ' + caughtUp.json?.state?.elapsedDays)
@@ -337,12 +352,18 @@ async function run() {
     caughtUp.json?.state?.cycleStart === caughtUpStart,
     'got ' + caughtUp.json?.state?.cycleStart)
   check('today still counts as not torn yet', caughtUp.json?.state?.openedToday === false)
+  check('the paper is torn as far as the missed days say',
+    caughtUp.json?.state?.progress === caughtUpProgress(),
+    'got ' + caughtUp.json?.state?.progress)
 
-  const catchUpTear = await req('/api/gift/open', { method: 'POST', headers: authA })
+  const catchUpTear = await req('/api/gift/lingling-gift/open', { method: 'POST', headers: authA })
   check('tearing after a gap catches up with today',
     catchUpTear.json?.state?.openedToday === true &&
       catchUpTear.json?.state?.elapsedDays === daysBetweenKeys(caughtUpStart, shanghaiDateKey()),
     'got ' + catchUpTear.json?.state?.elapsedDays)
+  check("today's tear takes the paper a little further",
+    catchUpTear.json?.state?.progress === caughtUpProgress(1),
+    'got ' + catchUpTear.json?.state?.progress)
 
   // Once the gift date has passed the wrapping starts again, so the box counts
   // down to the next year's gift instead of snapping back to half-torn.
@@ -351,7 +372,7 @@ async function run() {
     .run(shanghaiDateKey(400), 'lingling-gift')
   db2.close()
 
-  const newCycle = await req('/api/gift', { headers: { Authorization: 'Bearer ' + tokenA } })
+  const newCycle = await req('/api/gift/lingling-gift', { headers: { Authorization: 'Bearer ' + tokenA } })
   check('a new cycle starts the day after the last gift date',
     newCycle.json?.state?.cycleStart === cycleStartKey(),
     'got ' + newCycle.json?.state?.cycleStart)
@@ -363,6 +384,27 @@ async function run() {
     'got ' + newCycle.json?.state?.elapsedDays)
   check('the new cycle is shorter than the days that are left',
     newCycle.json?.state?.elapsedDays < newCycle.json?.state?.cycleDays)
+
+  // A date that cannot be read must not make the box look unwrapped: the box
+  // is treated as one that has never been opened, and opening it again puts
+  // the anchor back where it belongs.
+  const db3 = new Database(join(ROOT, '.smoke-data/posts.db'))
+  db3.prepare('UPDATE gift_progress SET anchor_date = ? WHERE gift_id = ?')
+    .run('not-a-date', 'lingling-gift')
+  db3.close()
+
+  const broken = await req('/api/gift/lingling-gift', { headers: { Authorization: 'Bearer ' + tokenA } })
+  check('a broken anchor is a box that was never opened',
+    broken.json?.state?.anchorDate === null && broken.json?.state?.cycleStart === null,
+    'got ' + broken.json?.state?.anchorDate)
+  check('a broken anchor leaves the paper untouched',
+    broken.json?.state?.progress === 0,
+    'got ' + broken.json?.state?.progress)
+
+  const repaired = await req('/api/gift/lingling-gift/open', { method: 'POST', headers: authA })
+  check('opening the box puts the anchor back',
+    repaired.json?.state?.anchorDate === shanghaiDateKey(),
+    'got ' + repaired.json?.state?.anchorDate)
 
   section('date maths')
   const serverDates = await import('../dist/server/dates.js')

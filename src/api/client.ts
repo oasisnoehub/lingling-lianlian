@@ -287,13 +287,15 @@ export async function deleteReaction(postId: string): Promise<void> {
 /* ------------------------------------------------------------------ */
 
 /**
- * The state of Lingling's gift box.
+ * The state of a gift box.
  *
  * The server owns this state: the progress has to survive a reload, a device
  * change and the other person's timeline, so it is derived there from the day
  * of the first tear rather than counted in the browser.
  */
 export interface GiftState {
+  /** The box this state belongs to. */
+  giftId: string
   /** The day of the first tear, as "YYYY-MM-DD" in Asia/Shanghai. */
   anchorDate: string | null
   /** The day this cycle's wrapping started, as "YYYY-MM-DD". */
@@ -306,12 +308,14 @@ export interface GiftState {
   elapsedDays: number
   /** The length of the cycle in days. */
   cycleDays: number
+  /** How far along the paper is, 0..1. */
+  progress: number
   /** Today in Asia/Shanghai, as "YYYY-MM-DD". */
   today: string
 }
 
-export async function getGiftState(): Promise<GiftState> {
-  const result = await request<{ state: GiftState }>('/gift')
+export async function getGiftState(giftId: string): Promise<GiftState> {
+  const result = await request<{ state: GiftState }>(`/gift/${giftId}`)
   return result.state
 }
 
@@ -321,6 +325,10 @@ export async function getGiftState(): Promise<GiftState> {
  * Idempotent within a day: `justOpened` is false when the wrapping had
  * already been torn today, so a repeat click only re-reads the countdown.
  */
-export async function openGift(): Promise<{ state: GiftState; justOpened: boolean }> {
-  return request<{ state: GiftState; justOpened: boolean }>('/gift/open', { method: 'POST' })
+export async function openGift(
+  giftId: string
+): Promise<{ state: GiftState; justOpened: boolean }> {
+  return request<{ state: GiftState; justOpened: boolean }>(`/gift/${giftId}/open`, {
+    method: 'POST',
+  })
 }

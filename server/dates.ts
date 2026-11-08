@@ -52,16 +52,18 @@ export function parseDateKey(key: string): CivilDate | null {
   const month = Number(match[2])
   const day = Number(match[3])
   if (month < 1 || month > 12 || day < 1 || day > 31) return null
-  // The date has to exist: 31 February is not a day.
-  const probe = new Date(Date.UTC(year, month - 1, day))
-  if (
-    probe.getUTCFullYear() !== year ||
-    probe.getUTCMonth() !== month - 1 ||
-    probe.getUTCDate() !== day
-  ) {
-    return null
-  }
+  if (!isRealDate({ year, month, day })) return null
   return { year, month, day }
+}
+
+/** Whether a month and day exist in that year (29 February only in leap years). */
+export function isRealDate(date: CivilDate): boolean {
+  const probe = new Date(Date.UTC(date.year, date.month - 1, date.day))
+  return (
+    probe.getUTCFullYear() === date.year &&
+    probe.getUTCMonth() === date.month - 1 &&
+    probe.getUTCDate() === date.day
+  )
 }
 
 /** Whole days from one date to another; negative when `to` is earlier. */

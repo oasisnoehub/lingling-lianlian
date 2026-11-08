@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express'
 import { requireAuth } from '../auth.js'
-import { getGiftState, openGift } from '../gift.js'
+import { getGiftState, isGiftBox, openGift } from '../gift.js'
 
 const router = Router()
 
@@ -10,10 +10,21 @@ const router = Router()
  */
 router.use(requireAuth)
 
+/** The box this request is about, if there is one. */
+function boxOf(req: Request): string | null {
+  const giftId = req.params.giftId
+  return giftId && isGiftBox(giftId) ? giftId : null
+}
+
 /** Current state of the box: how much wrapping is off and whether today is done. */
-router.get('/', (_req: Request, res: Response) => {
+router.get('/:giftId', (req: Request, res: Response) => {
+  const giftId = boxOf(req)
+  if (!giftId) {
+    res.status(404).json({ error: '没有这个礼物盒' })
+    return
+  }
   try {
-    res.json({ state: getGiftState() })
+    res.json({ state: getGiftState(giftId) })
   } catch (err) {
     console.error('Error reading gift state:', err)
     res.status(500).json({ error: '获取礼物状态失败' })
@@ -26,9 +37,14 @@ router.get('/', (_req: Request, res: Response) => {
  * Idempotent per day: the second call of the day reports justOpened=false
  * and leaves the box exactly where it was.
  */
-router.post('/open', (_req: Request, res: Response) => {
+router.post('/:giftId/open', (req: Request, res: Response) => {
+  const giftId = boxOf(req)
+  if (!giftId) {
+    res.status(404).json({ error: '没有这个礼物盒' })
+    return
+  }
   try {
-    const result = openGift()
+    const result = openGift(giftId)
     res.json({ state: result.state, justOpened: result.justOpened })
   } catch (err) {
     console.error('Error opening gift:', err)
