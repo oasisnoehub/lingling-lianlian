@@ -45,8 +45,11 @@ npm run verify       # typecheck + build + smoke
   tap it to read the countdown
 - `src/components/GiftBoxArt.tsx` - The box drawing, as separate layers (body,
   ribbon, lid, wrapping paper, note) so the tear is real movement. The
-  wrapping paper comes in two prints: plain (`gift-closed.webp`) and diagonal
-  stripes (`gift-closed-striped.webp`), the striped one being Lianlian's box
+  wrapping paper comes in two prints: plain (`gift-closed.webp`), the painting
+  as it was painted, and sun (`gift-closed-sun.webp`), the same painting with
+  the moon and the stars painted out and a golden sun and white clouds painted
+  in their place, turned to the pink of the lianlian theme; the sun print is
+  Lianlian's box
 - `src/api/client.ts` - API client for all backend calls
 
 ### Backend (Express + better-sqlite3)

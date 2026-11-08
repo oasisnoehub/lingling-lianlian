@@ -318,7 +318,7 @@ export default function GiftBox({ config, now, currentPersonId }: GiftBoxProps) 
             tears={tears}
             tearing={tearing}
             tearsBefore={tearsBeforeRef.current}
-            pattern={config.theme === 'lianlian' ? 'striped' : 'plain'}
+            pattern={config.theme === 'lianlian' ? 'sun' : 'plain'}
           />
           <GiftConfetti burst={celebrating ? burst : 0} still={reducedMotion} />
         </button>

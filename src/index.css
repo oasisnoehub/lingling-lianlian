@@ -2754,15 +2754,15 @@ button {
 }
 
 /*
- * Lianlian's box is the same painting in pink.
+ * Lianlian's box is the painting with the night taken off it.
  *
  * The picture is worked out in one colour first and then turned to the pink of
  * the lianlian theme, so the folds, the paper and the ribbon keep being
  * lighter and darker parts of the same colour and the painting still reads as
- * a painting rather than as a flat colour. The torn paper is tinted with it,
- * so a tear does not leave a scrap of blue behind.
+ * a painting rather than as a flat colour. The sun and the clouds are painted
+ * on after the turn, so they keep their own colour; the torn paper is tinted
+ * with the box, so a tear does not leave a scrap of blue behind.
  */
-.gift-panel[data-theme='lianlian'] .gift-art-layer,
 .gift-panel[data-theme='lianlian'] .gift-tear {
   filter: sepia(1) saturate(4) hue-rotate(295deg);
 }

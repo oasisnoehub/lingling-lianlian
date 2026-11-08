@@ -1,8 +1,8 @@
 import type { CSSProperties } from 'react'
 import giftClosed from '../assets/gift-closed.webp'
 import giftPeeling from '../assets/gift-peeling.webp'
-import giftClosedStriped from '../assets/gift-closed-striped.webp'
-import giftPeelingStriped from '../assets/gift-peeling-striped.webp'
+import giftClosedSun from '../assets/gift-closed-sun.webp'
+import giftPeelingSun from '../assets/gift-peeling-sun.webp'
 import giftTear from '../assets/gift-tear.webp'
 
 /*
@@ -23,20 +23,22 @@ export type GiftArtState = 'closed' | 'peeling'
 /**
  * How the wrapping paper is printed.
  *
- * The box is the same painting either way; the striped pictures are the same
- * picture with diagonal stripes painted over the paper, so the two boxes are
- * the same box with different wrapping.
+ * The plain pictures are the painting as it was painted: a night sky with a
+ * moon and stars over the box. The sun pictures are the same painting with
+ * the night taken off it -- the moon and the stars are painted out and a
+ * golden sun and white clouds are painted in their place -- and the whole
+ * thing is turned to the pink of the lianlian theme.
  */
-export type GiftPaperPattern = 'plain' | 'striped'
+export type GiftPaperPattern = 'plain' | 'sun'
 
 const PICTURES: Record<GiftPaperPattern, { state: GiftArtState; src: string }[]> = {
   plain: [
     { state: 'closed', src: giftClosed },
     { state: 'peeling', src: giftPeeling },
   ],
-  striped: [
-    { state: 'closed', src: giftClosedStriped },
-    { state: 'peeling', src: giftPeelingStriped },
+  sun: [
+    { state: 'closed', src: giftClosedSun },
+    { state: 'peeling', src: giftPeelingSun },
   ],
 }
 
