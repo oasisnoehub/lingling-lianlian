@@ -1,6 +1,8 @@
 import type { CSSProperties } from 'react'
 import giftClosed from '../assets/gift-closed.webp'
 import giftPeeling from '../assets/gift-peeling.webp'
+import giftClosedStriped from '../assets/gift-closed-striped.webp'
+import giftPeelingStriped from '../assets/gift-peeling-striped.webp'
 import giftTear from '../assets/gift-tear.webp'
 
 /*
@@ -18,10 +20,25 @@ import giftTear from '../assets/gift-tear.webp'
 /** The two pictures of the box itself. */
 export type GiftArtState = 'closed' | 'peeling'
 
-const PICTURES: { state: GiftArtState; src: string }[] = [
-  { state: 'closed', src: giftClosed },
-  { state: 'peeling', src: giftPeeling },
-]
+/**
+ * How the wrapping paper is printed.
+ *
+ * The box is the same painting either way; the striped pictures are the same
+ * picture with diagonal stripes painted over the paper, so the two boxes are
+ * the same box with different wrapping.
+ */
+export type GiftPaperPattern = 'plain' | 'striped'
+
+const PICTURES: Record<GiftPaperPattern, { state: GiftArtState; src: string }[]> = {
+  plain: [
+    { state: 'closed', src: giftClosed },
+    { state: 'peeling', src: giftPeeling },
+  ],
+  striped: [
+    { state: 'closed', src: giftClosedStriped },
+    { state: 'peeling', src: giftPeelingStriped },
+  ],
+}
 
 /**
  * Where the paper has been torn, in the coordinates of the cut picture.
@@ -84,6 +101,8 @@ interface GiftBoxArtProps {
   tearing: boolean
   /** How much paper was off before this tear, so it can open out of it. */
   tearsBefore?: number
+  /** How the wrapping paper is printed. */
+  pattern?: GiftPaperPattern
 }
 
 interface GiftConfettiPiece {
@@ -180,7 +199,7 @@ export function GiftConfetti({ burst, still = false }: GiftConfettiProps) {
  * The box itself: the picture of it, the tears in its wrapping paper, and
  * the scrap of paper that comes off while a tear is being made.
  */
-export default function GiftBoxArt({ tears, tearing, tearsBefore }: GiftBoxArtProps) {
+export default function GiftBoxArt({ tears, tearing, tearsBefore, pattern = 'plain' }: GiftBoxArtProps) {
   const done = Math.floor(tears)
   const growth = tears - done
 
@@ -211,7 +230,7 @@ export default function GiftBoxArt({ tears, tearing, tearsBefore }: GiftBoxArtPr
 
   return (
     <span className="gift-art">
-      {PICTURES.map(picture => (
+      {PICTURES[pattern].map(picture => (
         <img
           key={picture.state}
           className="gift-art-layer"

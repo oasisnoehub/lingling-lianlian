@@ -314,7 +314,12 @@ export default function GiftBox({ config, now, currentPersonId }: GiftBoxProps) 
               : '查看距离 ' + config.name + ' 收到礼物还有多少天'
           }
         >
-          <GiftBoxArt tears={tears} tearing={tearing} tearsBefore={tearsBeforeRef.current} />
+          <GiftBoxArt
+            tears={tears}
+            tearing={tearing}
+            tearsBefore={tearsBeforeRef.current}
+            pattern={config.theme === 'lianlian' ? 'striped' : 'plain'}
+          />
           <GiftConfetti burst={celebrating ? burst : 0} still={reducedMotion} />
         </button>
       </div>
