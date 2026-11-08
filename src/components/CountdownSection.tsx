@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { PERSON_DATES } from '../config/personDates'
 import { msUntilNextShanghaiMidnight, resolveCountdown } from '../utils/countdown'
-import CountdownCard from './CountdownCard'
+import GiftBox from './GiftBox'
 
 /**
- * The birthday and gift countdown strip.
+ * The gift countdown strip.
  *
  * The rollover is scheduled against Asia/Shanghai midnight rather than the
- * browser's local midnight, so both cards update on their own no matter where
+ * browser's local midnight, so the box updates on its own no matter where
  * the device is or which timezone it reports.
  */
 export default function CountdownSection() {
@@ -41,14 +41,11 @@ export default function CountdownSection() {
   }, [])
 
   return (
-    <section className="countdown-section" aria-label="生日与礼物倒计时">
-      {PERSON_DATES.map(config => (
-        <CountdownCard
-          key={config.personId}
-          config={config}
-          countdown={resolveCountdown(config, now)}
-        />
-      ))}
+    <section className="countdown-section" aria-label="礼物倒计时">
+      {PERSON_DATES.map(config => {
+        const countdown = resolveCountdown(config, now)
+        return <GiftBox key={config.personId} config={config} countdown={countdown} />
+      })}
     </section>
   )
 }
