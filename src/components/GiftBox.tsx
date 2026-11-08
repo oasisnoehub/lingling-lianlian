@@ -298,6 +298,13 @@ export default function GiftBox({ config, now }: GiftBoxProps) {
           <GiftConfetti burst={celebrating ? burst : 0} still={reducedMotion} />
         </button>
       </div>
+
+      {/* Which box this is. With more than one box on the page they would
+          otherwise be two pictures of the same thing. */}
+      <p className="gift-caption">
+        <span className="gift-caption-name">{config.name}</span>
+        <span className="gift-caption-date">{config.dateLabel}</span>
+      </p>
     </section>
   )
 }

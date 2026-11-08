@@ -21,8 +21,8 @@ export interface PersonDateConfig extends OccasionConfig {
 }
 
 /**
- * The countdowns on the timeline. Only Lingling's gift box is here for now;
- * a new entry is just a new object in this list.
+ * The countdowns on the timeline. A new entry is just a new object in this
+ * list, and the same box has to exist on the server under the same id.
  */
 export const PERSON_DATES: readonly PersonDateConfig[] = [
   {
@@ -33,5 +33,14 @@ export const PERSON_DATES: readonly PersonDateConfig[] = [
     month: 1,
     day: 11,
     dateLabel: '1月11日',
+  },
+  {
+    personId: 'person-b',
+    name: 'Lianlian',
+    theme: 'lianlian',
+    giftId: 'lianlian-gift',
+    month: 6,
+    day: 28,
+    dateLabel: '6月28日',
   },
 ]

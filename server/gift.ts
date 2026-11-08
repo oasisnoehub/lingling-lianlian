@@ -40,6 +40,7 @@ import {
  */
 const GIFTS: Record<string, { month: number; day: number }> = {
   'lingling-gift': { month: 1, day: 11 },
+  'lianlian-gift': { month: 6, day: 28 },
 }
 
 /** Whether there is a box with this id. */

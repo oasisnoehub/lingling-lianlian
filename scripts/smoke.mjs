@@ -79,6 +79,18 @@ function giftTargetKey() {
   return new Date(target).toISOString().slice(0, 10)
 }
 
+/**
+ * The gift date of Lianlian's box: the first 28 June on or after today.
+ */
+function lianlianTargetKey() {
+  const shifted = new Date(Date.now() + 8 * 3600 * 1000)
+  const year = shifted.getUTCFullYear()
+  const todayUtc = Date.UTC(year, shifted.getUTCMonth(), shifted.getUTCDate())
+  const thisYear = Date.UTC(year, 5, 28)
+  const target = todayUtc > thisYear ? Date.UTC(year + 1, 5, 28) : thisYear
+  return new Date(target).toISOString().slice(0, 10)
+}
+
 /** The day a new cycle starts: the day after the gift date before this one. */
 function cycleStartKey() {
   const targetYear = Number(giftTargetKey().slice(0, 4))
@@ -280,6 +292,22 @@ async function run() {
     (await req('/api/gift/no-such-gift', { headers: authA })).status === 404)
   check('opening a box that does not exist -> 404',
     (await req('/api/gift/no-such-gift/open', { method: 'POST', headers: authA })).status === 404)
+
+  // The second box: its own id, its own date, its own progress.
+  const lianlian = await req('/api/gift/lianlian-gift', { headers: { Authorization: 'Bearer ' + tokenA } })
+  check('the second box -> 200', lianlian.status === 200)
+  check('the second box says which box it is',
+    lianlian.json?.state?.giftId === 'lianlian-gift')
+  check('the second box is due on its own date',
+    lianlian.json?.state?.targetDate === lianlianTargetKey(),
+    'got ' + lianlian.json?.state?.targetDate)
+  const lianlianTear = await req('/api/gift/lianlian-gift/open', { method: 'POST', headers: authA })
+  check('the second box tears on its own', lianlianTear.json?.justOpened === true)
+  check('the second box has its own anchor',
+    lianlianTear.json?.state?.anchorDate === shanghaiDateKey())
+  const linglingStill = await req('/api/gift/lingling-gift', { headers: { Authorization: 'Bearer ' + tokenA } })
+  check('the second box does not touch the first',
+    linglingStill.json?.state?.anchorDate === null)
 
   const giftBefore = await req('/api/gift/lingling-gift', { headers: { Authorization: 'Bearer ' + tokenA } })
   check('gift state -> 200', giftBefore.status === 200)

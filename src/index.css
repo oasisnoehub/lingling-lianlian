@@ -2611,15 +2611,18 @@ button {
 .countdown-section {
   display: flex;
   justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px 40px;
   margin-bottom: 16px;
 }
 
 /* ==================== GIFT BOX ==================== */
 /*
- * Lingling's gift box. There is no card around it and no writing on the page:
- * the box stands straight on the site's own dark background, the way the
- * painting stands on its paper, and the only words anywhere near it are on
- * the little slip of paper that comes out of the box once it is tapped.
+ * The gift box. There is no card around it: the box stands straight on the
+ * site's own dark background, the way the painting stands on its paper, and
+ * the words near it are only the little slip of paper that comes out of the
+ * box once it is tapped, and the one line under the box that says whose gift
+ * it is.
  *
  * The box is a painting with three states. The three pictures in src/assets
  * are cut from the originals in the project root so that the body of the box
@@ -2630,6 +2633,8 @@ button {
 .gift-panel {
   position: relative;
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
 
   /* The width of the body of the box. */
@@ -2653,6 +2658,29 @@ button {
   align-items: flex-start;
   width: 100%;
   padding-top: var(--gift-band);
+}
+
+/*
+ * Which box this is. There is nothing written on the page near the box, so
+ * this is the one line that says whose gift it is -- with more than one box
+ * they would otherwise be two pictures of the same thing.
+ */
+.gift-caption {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  margin-top: 12px;
+  font-size: 12px;
+  letter-spacing: 0.4px;
+  color: var(--person-primary);
+}
+
+.gift-caption-name {
+  font-weight: 700;
+}
+
+.gift-caption-date {
+  color: rgba(255, 255, 255, 0.42);
 }
 
 .gift-box {
