@@ -41,7 +41,8 @@ npm run verify       # typecheck + build + smoke
   layer per day and the note with the countdown slides out of the box. The
   server owns the calendar (`progress`, 0..1) and the client owns the picture
   (`TEAR_SPOTS` in `GiftBoxArt`), so the number of tears stays a fact about
-  the painting
+  the painting. Only the owner of a box may tear it; the other person may
+  tap it to read the countdown
 - `src/components/GiftBoxArt.tsx` - The box drawing, as separate layers (body,
   ribbon, lid, wrapping paper, note) so the tear is real movement
 - `src/api/client.ts` - API client for all backend calls
@@ -75,6 +76,9 @@ npm run verify       # typecheck + build + smoke
   table in `server/gift.ts`, and the same month and day in
   `src/config/personDates.ts`. A second box is a second entry in both: an id
   in `GIFTS` and a `giftId` in `PERSON_DATES` that names it
+- Each box has an owner: the person whose gift it is. Only the owner may tear
+  the wrapping (the server refuses with 403), and the owner is the `owner`
+  field of the `GIFTS` entry; everybody may read the box and its countdown
 - Uploads: `uploads/` directory (served at `/uploads`)
 - Frontend build: `dist/` (Vite output)
 
@@ -94,7 +98,7 @@ All except `/api/auth/*` require an `Authorization: Bearer <token>` header.
 | `POST /api/upload/video` | Upload video (MIME-whitelisted) |
 | `GET /api/location/reverse` | Amap reverse geocoding |
 | `GET /api/gift/:giftId` | State of a gift box (how much wrapping is off) |
-| `POST /api/gift/:giftId/open` | Tear the wrapping; one tear per day |
+| `POST /api/gift/:giftId/open` | Tear the wrapping; one tear per day, and only by the box's owner |
 | `GET /api/health` | Unauthenticated liveness probe (Docker HEALTHCHECK) |
 
 ### Required environment variables

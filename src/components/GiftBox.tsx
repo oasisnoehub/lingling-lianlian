@@ -10,6 +10,8 @@ interface GiftBoxProps {
   config: PersonDateConfig
   /** The time the countdown is worked out from. */
   now: Date
+  /** Who is signed in: only this person's own box can be torn. */
+  currentPersonId: string
 }
 
 /** How often the shared state is re-read, so both people watch the same box. */
@@ -124,11 +126,15 @@ function previewCountdown(countdown: Countdown): Countdown {
  * clicking again that day only shows the note, because the paper for that
  * day has already been torn.
  *
+ * Only the person the box belongs to may tear it -- the paper that comes off
+ * is theirs. The other person may tap the box to read the number of days on
+ * the note, but the paper stays as it is.
+ *
  * How much wrapping is off is decided by the server from the calendar, so a
  * reload, another device and the other person's timeline all agree, and a
  * few days away skip ahead instead of losing progress.
  */
-export default function GiftBox({ config, now }: GiftBoxProps) {
+export default function GiftBox({ config, now, currentPersonId }: GiftBoxProps) {
   const [state, setState] = useState<GiftState | null>(null)
   const [noteOpen, setNoteOpen] = useState(false)
   const [phase, setPhase] = useState<'idle' | 'tear'>('idle')
@@ -154,6 +160,9 @@ export default function GiftBox({ config, now }: GiftBoxProps) {
   // The countdown the box shows: the server's day of the gift, or the date in
   // the configuration until the server has answered.
   const countdown = previewCountdown(countdownFor(state, config, now))
+
+  // Whose box this is. Only the owner tears the paper off it.
+  const isOwner = config.personId === currentPersonId
 
   /** The day the gift is due: the box stands wide open. */
   const isGiftDay = countdown.isToday
@@ -233,6 +242,13 @@ export default function GiftBox({ config, now }: GiftBoxProps) {
   async function handleClick() {
     if (busy) return
 
+    // The other person's box is not theirs to tear: the tap only reads the
+    // note with the countdown.
+    if (!isOwner) {
+      setNoteOpen(true)
+      return
+    }
+
     setBusy(true)
     // When the paper is already off the note can slide out at once: the server
     // is only asked to confirm, not to be waited for.
@@ -292,7 +308,11 @@ export default function GiftBox({ config, now }: GiftBoxProps) {
           className="gift-box"
           onClick={() => void handleClick()}
           aria-expanded={noteOpen}
-          aria-label={'打开礼物盒，查看距离 ' + config.name + ' 收到礼物还有多少天'}
+          aria-label={
+            isOwner
+              ? '打开礼物盒，查看距离 ' + config.name + ' 收到礼物还有多少天'
+              : '查看距离 ' + config.name + ' 收到礼物还有多少天'
+          }
         >
           <GiftBoxArt tears={tears} tearing={tearing} tearsBefore={tearsBeforeRef.current} />
           <GiftConfetti burst={celebrating ? burst : 0} still={reducedMotion} />

@@ -32,20 +32,33 @@ import {
  */
 
 /**
- * The gift boxes there are, and the day each one's gift is due.
+ * The gift boxes there are, the day each one's gift is due, and whose box it is.
  *
  * The dates live here rather than in the database, so a date can be corrected
  * by editing this file alone. The client asks for a box by its id, so a
  * second occasion is a second entry here.
+ *
+ * The owner is the person whose gift it is: only they may tear the paper,
+ * because the paper that comes off is theirs.
  */
-const GIFTS: Record<string, { month: number; day: number }> = {
-  'lingling-gift': { month: 1, day: 11 },
-  'lianlian-gift': { month: 6, day: 28 },
+const GIFTS: Record<string, { month: number; day: number; owner: string }> = {
+  'lingling-gift': { month: 1, day: 11, owner: 'person-a' },
+  'lianlian-gift': { month: 6, day: 28, owner: 'person-b' },
 }
 
 /** Whether there is a box with this id. */
 export function isGiftBox(giftId: string): boolean {
   return Object.prototype.hasOwnProperty.call(GIFTS, giftId)
+}
+
+/**
+ * Whose box this is, or null if there is no such box.
+ *
+ * The other person may look at the box and read the number of days on the
+ * note, but the tearing of the paper is the owner's alone.
+ */
+export function giftOwner(giftId: string): string | null {
+  return GIFTS[giftId]?.owner ?? null
 }
 
 export interface GiftState {

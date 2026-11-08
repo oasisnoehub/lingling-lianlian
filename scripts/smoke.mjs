@@ -301,10 +301,12 @@ async function run() {
   check('the second box is due on its own date',
     lianlian.json?.state?.targetDate === lianlianTargetKey(),
     'got ' + lianlian.json?.state?.targetDate)
-  const lianlianTear = await req('/api/gift/lianlian-gift/open', { method: 'POST', headers: authA })
+  const lianlianTear = await req('/api/gift/lianlian-gift/open', { method: 'POST', headers: authB })
   check('the second box tears on its own', lianlianTear.json?.justOpened === true)
   check('the second box has its own anchor',
     lianlianTear.json?.state?.anchorDate === shanghaiDateKey())
+  const wrongTear = await req('/api/gift/lianlian-gift/open', { method: 'POST', headers: authA })
+  check("tearing somebody else's box -> 403", wrongTear.status === 403)
   const linglingStill = await req('/api/gift/lingling-gift', { headers: { Authorization: 'Bearer ' + tokenA } })
   check('the second box does not touch the first',
     linglingStill.json?.state?.anchorDate === null)
@@ -352,8 +354,10 @@ async function run() {
   check('the other person sees the same anchor',
     otherView.json?.state?.anchorDate === shanghaiDateKey())
   const otherTear = await req('/api/gift/lingling-gift/open', { method: 'POST', headers: authB })
-  check('the other person cannot peel a second layer on the same day',
-    otherTear.json?.justOpened === false && otherTear.json?.state?.elapsedDays === 0)
+  check("tearing somebody else's box -> 403", otherTear.status === 403)
+  const afterRefusal = await req('/api/gift/lingling-gift', { headers: { Authorization: 'Bearer ' + tokenA } })
+  check('a refused tear leaves the box as it was',
+    afterRefusal.json?.state?.elapsedDays === 0 && afterRefusal.json?.state?.openedToday === true)
 
   // Missing a few days must not lose progress, so the box is moved back four
   // days and today's tear is taken away again.
