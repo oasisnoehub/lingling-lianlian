@@ -2608,12 +2608,82 @@ button {
 
 /* ==================== GIFT COUNTDOWN ==================== */
 /* The gift box stands on its own in the middle of the page. */
+.countdown {
+  margin-bottom: 16px;
+}
+
 .countdown-section {
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
   gap: 8px 40px;
-  margin-bottom: 16px;
+}
+
+/*
+ * On a narrow screen there is only room for one box, so the strip becomes a
+ * carousel: one box at a time, swiped sideways. The dot underneath says which
+ * one is showing.
+ */
+@media (max-width: 639px) {
+  .countdown-section {
+    flex-wrap: nowrap;
+    /* A centred row that overflows cannot be scrolled back to its start, so
+       the boxes start at the left instead. */
+    justify-content: flex-start;
+    gap: 0;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .countdown-section::-webkit-scrollbar {
+    display: none;
+  }
+
+  .countdown-section .gift-panel {
+    flex: 0 0 100%;
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+  }
+}
+
+/* The dots under the strip: which box is showing, and a way to change it. */
+.countdown-dots {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.countdown-dot {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.countdown-dot::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.24);
+  transition: background 0.25s ease, transform 0.25s ease;
+}
+
+.countdown-dot[data-active='true']::before {
+  background: var(--person-primary);
+  transform: scale(1.3);
+}
+
+/* With room for both boxes there is nothing to switch. */
+@media (min-width: 640px) {
+  .countdown-dots {
+    display: none;
+  }
 }
 
 /* ==================== GIFT BOX ==================== */
