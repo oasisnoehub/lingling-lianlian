@@ -10,6 +10,7 @@
     "server": "node --env-file=.env --import tsx --watch server/index.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.server.json",
     "smoke": "node scripts/smoke.mjs",
+    "test:browser": "node scripts/browser-reactions.mjs",
     "verify": "npm run typecheck && npm run build && npm run smoke"
   },
   "dependencies": {

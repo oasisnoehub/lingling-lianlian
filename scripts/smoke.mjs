@@ -178,6 +178,83 @@ async function run() {
   check('A editing own post -> 200',
     (await req('/api/posts/' + id, { method: 'PUT', headers: authA, body: JSON.stringify({ content: 'edited' }) })).status === 200)
 
+  section('reactions')
+  const react = (token, postId, emoji) => req('/api/reactions', {
+    method: 'POST', headers: jsonAuth(token),
+    body: JSON.stringify({ postId, emoji }),
+  })
+  const readReactions = (token, ids) =>
+    req('/api/reactions?postIds=' + encodeURIComponent(ids.join(',')), { headers: jsonAuth(token) })
+
+  check('reading reactions without a token -> 401',
+    (await req('/api/reactions?postIds=' + id)).status === 401)
+  check('writing a reaction without a token -> 401',
+    (await req('/api/reactions', { method: 'POST', body: JSON.stringify({ postId: id, emoji: '👍' }) })).status === 401)
+
+  const firstReaction = await react(tokenA, id, '👍')
+  check('a reaction is accepted -> 200', firstReaction.status === 200, String(firstReaction.status))
+  check('the reaction carries its author',
+    firstReaction.json?.reaction?.person_id === 'person-a', JSON.stringify(firstReaction.json?.reaction))
+  check('the emoji is stored verbatim', firstReaction.json?.reaction?.emoji === '👍')
+
+  // The phone keyboard hands over whatever it produced, so the emoji arrives
+  // with its variation selector or as several code points glued together.
+  const variation = await react(tokenA, id, '❤️')
+  check('an emoji with a variation selector is accepted',
+    variation.status === 200 && variation.json?.reaction?.emoji === '❤️',
+    JSON.stringify(variation.json?.reaction?.emoji))
+  const family = await react(tokenA, id, '👨‍👩‍👧')
+  check('a ZWJ sequence is accepted whole',
+    family.status === 200 && family.json?.reaction?.emoji === '👨‍👩‍👧',
+    JSON.stringify(family.json?.reaction?.emoji))
+  const flag = await react(tokenA, id, '🇨🇳')
+  check('a flag is accepted whole',
+    flag.status === 200 && flag.json?.reaction?.emoji === '🇨🇳',
+    JSON.stringify(flag.json?.reaction?.emoji))
+  const keycap = await react(tokenA, id, '1️⃣')
+  check('a keycap is accepted',
+    keycap.status === 200 && keycap.json?.reaction?.emoji === '1️⃣',
+    JSON.stringify(keycap.json?.reaction?.emoji))
+
+  const replaced = await react(tokenA, id, '🎉')
+  check('reacting again replaces the emoji',
+    replaced.status === 200 && replaced.json?.reaction?.emoji === '🎉',
+    JSON.stringify(replaced.json?.reaction?.emoji))
+  const mine = await readReactions(tokenA, [id])
+  check('one reaction per person', mine.json?.reactions?.[id]?.length === 1,
+    JSON.stringify(mine.json?.reactions))
+
+  check('plain text is rejected -> 400', (await react(tokenA, id, 'hello')).status === 400)
+  check('a bare number is rejected -> 400', (await react(tokenA, id, '5')).status === 400)
+  check('an empty emoji is rejected -> 400', (await react(tokenA, id, '')).status === 400)
+  check('a missing emoji is rejected -> 400',
+    (await req('/api/reactions', { method: 'POST', headers: authA, body: JSON.stringify({ postId: id }) })).status === 400)
+  check('a reaction on a missing post -> 404',
+    (await react(tokenA, 'no-such-post', '👍')).status === 404)
+
+  check('the other person can react too', (await react(tokenB, id, '❤️')).status === 200)
+  const both = await readReactions(tokenA, [id])
+  check('both reactions are listed', both.json?.reactions?.[id]?.length === 2,
+    JSON.stringify(both.json?.reactions))
+
+  check('postIds is required -> 400', (await req('/api/reactions', { headers: authA })).status === 400)
+  check('an empty postIds is rejected -> 400',
+    (await req('/api/reactions?postIds=', { headers: authA })).status === 400)
+  check('too many postIds -> 400',
+    (await readReactions(tokenA, Array.from({ length: 201 }, (_, i) => 'post-' + i))).status === 400)
+
+  const withdrawn = await req('/api/reactions', {
+    method: 'DELETE', headers: authA, body: JSON.stringify({ postId: id }),
+  })
+  check('a reaction can be withdrawn -> 200',
+    withdrawn.status === 200 && withdrawn.json?.removed === true, JSON.stringify(withdrawn.json))
+  const afterWithdrawal = await readReactions(tokenA, [id])
+  check('only the other reaction is left',
+    afterWithdrawal.json?.reactions?.[id]?.length === 1,
+    JSON.stringify(afterWithdrawal.json?.reactions))
+  check('withdrawing twice is still a success',
+    (await req('/api/reactions', { method: 'DELETE', headers: authA, body: JSON.stringify({ postId: id }) })).status === 200)
+
   section('upload whitelist')
   const evil = new FormData()
   evil.append('file', new Blob(['<script>alert(1)</script>'], { type: 'text/html' }), 'evil.html')

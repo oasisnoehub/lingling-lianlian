@@ -26,6 +26,7 @@ node dist/server/index.js   # Run compiled server
 # Checks
 npm run typecheck    # tsc --noEmit on both tsconfigs
 npm run smoke        # End-to-end test against the production build
+npm run test:browser # Chrome test of the reaction picker on a phone viewport
 npm run verify       # typecheck + build + smoke
 ```
 
