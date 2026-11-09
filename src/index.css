@@ -1,4 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+/* No webfont import on purpose. The content security policy only allows
+   'self', so the Google Fonts stylesheet was blocked in production, and it
+   is unreachable from mainland China anyway. The stacks below therefore name
+   system fonts that every device already has, which is also faster to paint. */
 
 :root {
   --primary: #7DD3FC;
@@ -860,15 +863,21 @@ button {
 }
 
 .timeline-page-title {
-  font-size: 16px;
-  font-weight: 700;
+  /* A serif reads as an English title without losing legibility on a phone.
+     Georgia comes first on purpose: in the Chinese serif fonts the curly
+     apostrophe is a full-width glyph, which tears the name apart. The
+     Chinese serifs stay behind it for systems without Georgia. */
+  font-family: 'Playfair Display', Georgia, 'Times New Roman', 'Songti SC', 'Noto Serif SC', serif;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   color: #BAE6FD;
   text-shadow: 0 0 14px rgba(125, 211, 252, 0.2);
 }
 
 @media (min-width: 481px) {
   .timeline-page-title {
-    font-size: 18px;
+    font-size: 20px;
   }
 }
 
@@ -2430,15 +2439,22 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  /* A soft pill reads as a quiet reaction badge instead of a coloured box. */
+  min-width: 26px;
+  height: 26px;
+  padding: 0 6px;
+  border-radius: 13px;
   animation: reaction-pop 0.22s var(--ease-out);
 }
 
 .reaction-bubble-lingling {
-  background: rgba(52, 211, 153, 0.2);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(52, 211, 153, 0.35);
 }
 
 .reaction-bubble-lianlian {
-  background: rgba(249, 168, 212, 0.2);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(249, 168, 212, 0.35);
 }
 
 .reaction-emoji {
@@ -2455,7 +2471,9 @@ button {
   height: 28px;
   border-radius: 50%;
   background: transparent;
-  border: 1.5px dashed var(--border-glass-hover);
+  /* A plain hairline circle instead of a dashed one, so an unreplied post
+     does not draw the eye with a broken ring. */
+  border: 1px solid var(--border-glass);
   color: var(--text-secondary);
   font-size: 14px;
   line-height: 1;
@@ -2465,6 +2483,7 @@ button {
 
 .reaction-trigger-btn:hover {
   background: var(--surface-glass-hover);
+  border-color: var(--border-glass-hover);
   transform: scale(1.08);
 }
 
@@ -2568,12 +2587,72 @@ button {
   background: rgba(0, 0, 0, 0.06);
 }
 
+/* ---------- Typed emoji row ---------- */
+/* Lets a phone keyboard type any emoji straight into the reaction. */
+.emoji-picker-input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 8px;
+  background: rgba(255, 255, 255, 0.95);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.emoji-picker-input {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  background: #fff;
+  color: #1f2937;
+  /* 16px keeps iOS from zooming in when the field is focused. */
+  font-size: 16px;
+  line-height: 1;
+  outline: none;
+  transition: border-color 0.15s var(--ease-out), box-shadow 0.15s var(--ease-out);
+}
+
+.emoji-picker-input::placeholder {
+  color: #9ca3af;
+}
+
+.emoji-picker-input:focus {
+  border-color: rgba(125, 211, 252, 0.9);
+  box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.18);
+}
+
+.emoji-picker-send {
+  flex: none;
+  height: 32px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 8px;
+  background: #38BDF8;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s var(--ease-out), opacity 0.15s var(--ease-out);
+}
+
+.emoji-picker-send:hover:not(:disabled) {
+  background: #0EA5E9;
+}
+
+.emoji-picker-send:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .emoji-picker-content {
   border-top: 1px solid rgba(0, 0, 0, 0.05);
   min-height: 0;
-  overflow: visible;
+  overflow: hidden;
   background: #fff;
-  max-height: 340px;
+  /* The library is tall, so it is capped and scrolled to stay on screen. */
+  max-height: min(300px, 40vh);
   overflow-y: auto;
 }
 
@@ -2587,6 +2666,10 @@ button {
   background: #fff !important;
   border: none !important;
   box-shadow: none !important;
+  /* The picker sets its own height inline, so the outer cap only takes
+     effect when the inner height is released as well. */
+  height: auto !important;
+  max-height: none;
 }
 
 .emoji-picker-error {

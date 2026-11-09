@@ -408,7 +408,7 @@ function PostInput({
             <path d="M22 2L11 13"/>
             <path d="M22 2L15 22L11 13L2 9L22 2Z"/>
           </svg>
-          <span>{isEditing ? '保存修改' : isUploading ? '上传中...' : '发布此刻'}</span>
+          <span>{isEditing ? '保存修改' : isUploading ? '上传中...' : 'Keep this moment'}</span>
         </button>
       </div>
     </div>

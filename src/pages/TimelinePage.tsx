@@ -29,6 +29,15 @@ const REFRESH_INTERVAL = 15000
 /** Reactions are fetched per post id in the query string, so the batch is capped. */
 const MAX_REACTION_POSTS = 200
 
+/**
+ * The page headings are English so the serif title reads as a title. They are
+ * keyed by person id because that is what decides which theme is drawn.
+ */
+const TIMELINE_TITLES: Record<string, string> = {
+  'person-a': 'Lingling\u2019s Timeline',
+  'person-b': 'Lianlian\u2019s Timeline',
+}
+
 interface Emotion {
   emoji: string
   label: string
@@ -269,7 +278,7 @@ function TimelinePage() {
           ←
         </button>
         <h1 className="timeline-page-title">
-          {currentPerson ? `${currentPerson.name} 的时间线` : '共享时间线'}
+          {TIMELINE_TITLES[personId] ?? 'Shared Timeline'}
         </h1>
         <button className="logout-btn" onClick={handleLogout} title="退出登录">
           退出

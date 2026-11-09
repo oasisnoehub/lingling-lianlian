@@ -26,6 +26,10 @@ uploads/
 backups/
 .smoke-*/
 
+# The high-resolution source art for the gift box. The webp files the app
+# actually loads live in src/assets, so these are kept out of the history.
+docs/gift-source/
+
 # Stray files
 tClear-Host
 
