@@ -106,6 +106,26 @@ All except `/api/auth/*` require an `Authorization: Bearer <token>` header.
 | `POST /api/gift/:giftId/open` | Tear the wrapping; one tear per day, and only by the box's owner |
 | `GET /api/health` | Unauthenticated liveness probe (Docker HEALTHCHECK) |
 
+### Uploading pictures
+The upload runs in two phases, and the user must be able to see both.
+
+- **Compressing** happens in the browser (`browser-image-compression`, target
+  1MB / 1920px). The preview appears at once and the button says `压缩中`.
+- **Uploading** starts only when the compression is done, then the button shows
+  the percentage.
+- The compressor runs in a worker whose source the library downloads at
+  runtime. It is served from our own origin (`?url` import, `libURL` option)
+  because the default is a CDN that is slow or blocked from China.
+- The page's CSP must allow the worker: `worker-src 'self' blob:`. Without it
+  the browser blocks the worker and the library quietly compresses on the main
+  thread instead, which freezes the page on a large picture.
+- A picture that cannot be compressed is uploaded as it is, but only up to
+  8MB; above that the upload is refused with a message rather than crawling
+  up the line.
+- HEIC becomes JPEG during the compression, which only works in a browser that
+  can decode HEIC (Safari). Elsewhere the original file goes up unchanged.
+- The server caps pictures at 20MB and videos at 100MB.
+
 ### Required environment variables
 See `.env.example`. `AUTH_SECRET`, `PERSON_A_PASSWORD` and
 `PERSON_B_PASSWORD` are required — the server refuses logins when a password is
@@ -120,3 +140,85 @@ Key points:
 - Production server serves `dist/` as static files
 - Traefik proxy routes `linglian.oasisnoe.com.cn` to container port 3456
 - Uses `frappe_network` and `traefik_public` Docker networks
+
+## Reverse proxy, DNS and certificates
+
+Traefik v2.10 runs on the origin host (39.108.89.255) in `/appdata/traefik/`:
+`docker-compose.yml`, `traefik.yml` (static: entrypoints, providers, ACME resolver)
+and `dyn.yml` (dynamic: routers, services, middlewares, TLS certificates). The
+dashboard/API is on host port 8082.
+
+### Cloudflare and the DNS layout
+- `linglian.oasisnoe.com.cn` is **DNS only (grey cloud)**: the browser talks
+  straight to 39.108.89.255. Cloudflare is not in the data path for it.
+- Every other hostname stays **proxied (orange cloud)** and is served through
+  Cloudflare. This was a deliberate decision, not an oversight.
+- Why grey cloud for the app people actually use: Cloudflare is an anycast
+  network, so a client is handed to the *nearest* Cloudflare edge POP, and the
+  free plan has no mainland-China POP. Chinese traffic therefore lands on
+  Hong Kong / Tokyo / San Jose / Los Angeles and every request makes a round
+  trip out of the country and back. Measured on this app: TTFB 1.2-5.8s
+  through Cloudflare vs 0.24s direct, and a 1MB upload 3.40s vs 0.39s.
+- A POP ("point of presence") is one of Cloudflare's edge data centres. The
+  routing to it is BGP-based anycast and **cannot be pinned to a region**;
+  Argo only improves edge-to-origin, never client-to-edge. A mainland CDN
+  would need ICP filing, and Cloudflare China Network is Enterprise-only. So
+  "route to the nearest node" is not a setting that exists -- grey cloud is
+  the only lever.
+- The trade-off of grey cloud: no DDoS protection, no WAF, no CDN cache, and
+  the origin IP is public. For this app the cache was worthless anyway (the
+  timeline is password protected and per-user).
+
+### Certificates
+- Certificates are issued and renewed by **Traefik's built-in ACME**:
+  `certificatesResolvers.letsencrypt` in `traefik.yml`, HTTP-01 on the `http`
+  entrypoint, storage `/certs/acme.json`. The `lingling-https@file` router
+  references it with `certResolver: letsencrypt` and `priority: 100`.
+- Do not reintroduce an acme.sh webroot setup here; that one was removed.
+- A statically installed certificate in `tls.certificates` will win over the
+  resolver and stop ACME from ever being triggered -- that is why the linglian
+  certificate is *not* also listed there.
+- `stores.default.defaultCertificate` is a global fallback: it is presented
+  for **any** SNI, including hostnames whose certificate it does not cover.
+  Certs without an explicit `stores: [default]` are not used for name
+  matching. Use a `certResolver` when a hostname needs its own certificate.
+- A router carrying `tls: {}` cannot be attached to a non-TLS entrypoint, so
+  the http-to-https redirect for a host needs a *separate* router without
+  `tls` (see `lingling-http`).
+
+### Operating rules for Traefik
+- **Never send SIGHUP.** In Traefik v2 it is a *shutdown* signal; the
+  container exits. Use `docker restart` or `docker-compose up -d --force-recreate`.
+- **Editing `dyn.yml` does not hot reload.** The file provider is configured
+  with `--providers.file.filename` (using `--providers.file.directory` against
+  a file means it never watches at all), and even then an upload that
+  replaces the file breaks the watch. Always finish with:
+  `cd /appdata/traefik && docker-compose up -d --force-recreate`.
+- A `file://` load-balancer URL returns 500 in v2.10. To expose a local
+  directory, serve it with a plain HTTP server and point the service at it.
+- Routers from the docker provider and from `dyn.yml` both exist for the same
+  hosts; the file router wins on the higher `priority`.
+
+## Diagnosing slow requests
+
+Measure before changing anything, and split the time into its parts -- client
+to edge, edge to origin, and client-side work:
+
+```bash
+dig +short linglian.oasisnoe.com.cn A     # is a Cloudflare IP in the way?
+curl -so /dev/null -w 'ttfb=%{time_starttransfer}s total=%{time_total}s\n' \
+  https://linglian.oasisnoe.com.cn/api/health
+```
+
+Compare the same hostname under grey and orange cloud rather than comparing
+two different hostnames. Two traps worth remembering: a certificate whose SAN
+does not match the hostname makes `curl` report a TLS error that looks like a
+connectivity failure, and `tcpdump` is what settles who is at fault when a
+Cloudflare-proxied host returns 525.
+
+Two known client-side costs of uploading a photo (not yet changed):
+`browser-image-compression` takes roughly 0.6-0.8s on a 4032x3024 JPEG before
+any network transfer, with no progress shown meanwhile, and if compression
+throws, the code falls back to uploading the *original* file -- up to the
+server's 100MB limit, which is what an iPhone HEIC photo hits.
+

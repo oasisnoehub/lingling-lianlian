@@ -148,7 +148,7 @@ if (process.env.NODE_ENV === 'production') {
       res.setHeader(
         'Content-Security-Policy',
         "default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; " +
-          "script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; " +
+          "script-src 'self'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; connect-src 'self'; " +
           "base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
       )
       res.sendFile(join(distDir, 'index.html'))

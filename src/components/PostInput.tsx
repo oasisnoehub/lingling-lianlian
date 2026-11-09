@@ -1,6 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Person, MediaItem, PostLocation } from '../types'
 import imageCompression from 'browser-image-compression'
+// The library compresses inside a worker that downloads its own source at
+// runtime. That source comes from a CDN by default, which is slow or
+// unreachable from mainland China -- and when the download fails the whole
+// compression fails, so the original picture is uploaded instead. Serving the
+// worker from our own origin removes that dependency.
+import compressionWorkerUrl from 'browser-image-compression/dist/browser-image-compression.js?url'
 import { reverseLocation, type UploadTask } from '../api/client'
 import { showToast } from './Toaster'
 
@@ -10,11 +16,46 @@ interface Emotion {
   id: string
 }
 
+/** Where an upload currently is: the picture is being prepared, or is on its way. */
+type UploadPhase = 'compressing' | 'uploading'
+
 interface UploadingItem {
   id: string
   localUrl: string
   type: 'image' | 'video'
+  phase: UploadPhase
+  /** 0..100 -- how far the compression or the upload has got. */
   progress: number
+}
+
+/**
+ * When the picture cannot be compressed, only one this size is uploaded as it
+ * is. Anything bigger would crawl up the line and time out.
+ */
+const MAX_FALLBACK_BYTES = 8 * 1024 * 1024
+
+/**
+ * Formats only Safari can decode. Compressing them to JPEG is what makes the
+ * picture show up on the other person's phone.
+ */
+const HEIC_TYPES = new Set([
+  'image/heic',
+  'image/heif',
+  'image/heic-sequence',
+  'image/heif-sequence',
+])
+
+/** The formats the compressor is allowed to write. */
+const COMPRESSIBLE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
+
+/**
+ * The format the picture is compressed into. A HEIC picture becomes JPEG,
+ * because only Safari can show HEIC.
+ */
+function compressionFileType(file: File): 'image/jpeg' | 'image/png' | 'image/webp' | undefined {
+  if (HEIC_TYPES.has(file.type)) return 'image/jpeg'
+  if (COMPRESSIBLE_TYPES.has(file.type)) return file.type as 'image/jpeg' | 'image/png' | 'image/webp'
+  return undefined
 }
 
 interface PostInputProps {
@@ -36,7 +77,7 @@ interface PostInputProps {
   initialEmotion?: string
   initialLocation?: PostLocation | null
   onContentChange?: (content: string) => void
-  onMediaChange?: (media: MediaItem[]) => void
+  onMediaChange?: (media: MediaItem[] | ((prev: MediaItem[]) => MediaItem[])) => void
   isEditing?: boolean
   onCancelEdit?: () => void
 }
@@ -66,7 +107,10 @@ function PostInput({
   const [locationError, setLocationError] = useState('')
   const imageInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
-  const abortsRef = useRef(new Map<string, () => void>())
+  /** How to stop each upload: the compression's abort while it runs, the request's abort after that. */
+  const cancelsRef = useRef(new Map<string, () => void>())
+  /** The uploads the user called off, so a late answer knows to drop itself. */
+  const cancelledRef = useRef(new Set<string>())
   const localUrlsRef = useRef(new Set<string>())
 
   // Derived from the list itself so removing an in-flight item can never leave
@@ -82,7 +126,7 @@ function PostInput({
 
   useEffect(() => {
     return () => {
-      for (const abort of abortsRef.current.values()) abort()
+      for (const cancel of cancelsRef.current.values()) cancel()
       for (const url of localUrlsRef.current) URL.revokeObjectURL(url)
       localUrlsRef.current.clear()
     }
@@ -93,9 +137,14 @@ function PostInput({
     onContentChange?.(value)
   }
 
-  function handleMediaChange(newMedia: MediaItem[]) {
-    setMedia(newMedia)
-    onMediaChange?.(newMedia)
+  /**
+   * The media list can be changed from an upload that finished while another
+   * one was still running, so the new list is worked out from the latest one
+   * rather than from the list this render happened to see.
+   */
+  function handleMediaChange(update: MediaItem[] | ((prev: MediaItem[]) => MediaItem[])) {
+    setMedia(prev => (typeof update === 'function' ? update(prev) : update))
+    onMediaChange?.(update)
   }
 
   const createLocalPreview = useCallback((file: File): string => {
@@ -115,62 +164,111 @@ function PostInput({
     })
   }
 
+  function updateItem(id: string, patch: Partial<UploadingItem>) {
+    setUploadingItems(prev => prev.map(i => (i.id === id ? { ...i, ...patch } : i)))
+  }
+
+  function isCancelled(id: string) {
+    return cancelledRef.current.has(id)
+  }
+
+  /** Shows the picture straight away, before it is even compressed. */
+  function beginItem(file: File, type: 'image' | 'video', phase: UploadPhase) {
+    const localUrl = createLocalPreview(file)
+    const id = `uploading-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    setUploadingItems(prev => [...prev, { id, localUrl, type, phase, progress: 0 }])
+    return id
+  }
+
+  function removeItem(id: string) {
+    cancelsRef.current.delete(id)
+    releasePreview(id)
+  }
+
   async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
+    const input = e.target
+    const file = input.files?.[0]
+    // Clear the input at once, so the same picture can be picked again.
+    input.value = ''
     if (!file) return
 
-    // Compress image before upload (max 1MB, 1920px)
+    const id = beginItem(file, 'image', 'compressing')
+    const controller = new AbortController()
+    cancelsRef.current.set(id, () => controller.abort())
+
+    let prepared: File
     try {
-      const compressedFile = await imageCompression(file, {
+      prepared = await imageCompression(file, {
         maxSizeMB: 1,
         maxWidthOrHeight: 1920,
         useWebWorker: true,
+        // The worker would otherwise download its own source from a CDN,
+        // which is slow or blocked here; this serves it from our own origin.
+        libURL: compressionWorkerUrl,
+        fileType: compressionFileType(file),
+        signal: controller.signal,
+        onProgress: progress => updateItem(id, { progress }),
       })
-      await uploadMedia(compressedFile, 'image')
     } catch (err) {
+      if (isCancelled(id)) {
+        cancelledRef.current.delete(id)
+        return
+      }
       console.error('Image compression failed:', err)
-      await uploadMedia(file, 'image')
+      // A picture that cannot be compressed is uploaded as it is, but only
+      // if it is small enough to get through the line in one piece.
+      if (file.size > MAX_FALLBACK_BYTES) {
+        cancelledRef.current.delete(id)
+        removeItem(id)
+        showToast('图片太大且无法压缩，请换一张小一点的照片')
+        return
+      }
+      prepared = file
     }
-    e.target.value = ''
+
+    if (isCancelled(id)) {
+      cancelledRef.current.delete(id)
+      return
+    }
+    await uploadMedia(id, prepared, 'image')
   }
 
   async function handleVideoSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
+    const input = e.target
+    const file = input.files?.[0]
+    input.value = ''
     if (!file) return
-    await uploadMedia(file, 'video')
-    e.target.value = ''
+
+    const id = beginItem(file, 'video', 'uploading')
+    await uploadMedia(id, file, 'video')
   }
 
-  async function uploadMedia(file: File, type: 'image' | 'video') {
-    const localUrl = createLocalPreview(file)
-    const tempId = `uploading-${Date.now()}`
-
-    setUploadingItems(prev => [...prev, {
-      id: tempId,
-      localUrl,
-      type,
-      progress: 0
-    }])
+  async function uploadMedia(id: string, file: File, type: 'image' | 'video') {
+    updateItem(id, { phase: 'uploading', progress: 0 })
 
     try {
       const uploadFn = type === 'image' ? onImageUpload : onVideoUpload
       const { promise, abort } = uploadFn(file, (progress) => {
-        setUploadingItems(prev => prev.map(i =>
-          i.id === tempId ? { ...i, progress } : i
-        ))
+        updateItem(id, { progress })
       })
-      abortsRef.current.set(tempId, abort)
+      cancelsRef.current.set(id, abort)
 
       const item = await promise
-      releasePreview(tempId)
-      handleMediaChange([...media, item])
+      if (isCancelled(id)) {
+        cancelledRef.current.delete(id)
+        return
+      }
+      cancelledRef.current.delete(id)
+      removeItem(id)
+      handleMediaChange(prev => [...prev, item])
     } catch (err) {
-      releasePreview(tempId)
+      const wasCancelled = isCancelled(id)
+      cancelledRef.current.delete(id)
+      removeItem(id)
+      if (wasCancelled) return
       const message = err instanceof Error ? err.message : '上传失败，请重试'
       // A user-initiated cancel is not a failure worth reporting.
       if (message !== '上传已取消') showToast(message)
-    } finally {
-      abortsRef.current.delete(tempId)
     }
   }
 
@@ -179,8 +277,11 @@ function PostInput({
   }
 
   function removeUploadingItem(id: string) {
-    abortsRef.current.get(id)?.()
-    releasePreview(id)
+    // Mark it first: a compression or upload that answers late must drop
+    // its result instead of adding the picture to the post.
+    cancelledRef.current.add(id)
+    cancelsRef.current.get(id)?.()
+    removeItem(id)
   }
 
   function handleLocate() {
@@ -301,7 +402,9 @@ function PostInput({
                       transform="rotate(-90 18 18)"
                     />
                   </svg>
-                  <span className="progress-text">{item.progress}%</span>
+                  <span className="progress-text">
+                    {item.phase === 'compressing' ? '压缩中' : `${item.progress}%`}
+                  </span>
                 </div>
               </div>
               <button
